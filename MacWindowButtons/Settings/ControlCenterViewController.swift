@@ -368,7 +368,7 @@ final class ControlCenterViewController: NSViewController {
             refreshStatusLabel.stringValue = "没有找到可控制的普通应用窗口。"
         } else if let targetApplicationName = result.targetApplicationName,
                   result.areControlsVisible {
-            refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，三个控件已常驻显示在 \(targetApplicationName) 窗口上方右侧。"
+            refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，已在 \(targetApplicationName) 窗口上方显示完整控制行。"
         } else {
             refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，请点击一个目标窗口。"
         }

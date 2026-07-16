@@ -1,13 +1,13 @@
 # MacWindowButtons
 
-MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control strip above the top-right edge of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
+MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Local test version 1.1.1 includes:
+Local test version 1.1.2 includes:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - Focused-window discovery through `AXUIElement`.
 - A non-activating translucent `NSPanel` that follows the focused window.
-- An always-visible control strip aligned outside the window's top-right edge.
+- An always-visible row matching the target window width, with an empty left placeholder and the three controls aligned right.
 - Maximization reserves one full control-row above the target window so the controls never cover its title bar or content.
 - Minimize, maximize/restore, and close actions.
 - Per-window restore frames and multi-display coordinate conversion.
@@ -33,6 +33,6 @@ Local test version 1.1.1 includes:
 - Automatic window scanning as soon as Accessibility permission becomes effective.
 - A DMG build script with a stable designated requirement for consistent local TCC identity across test updates.
 
-The main window opens automatically while the application stays out of the Dock. The three controls remain visible above the focused window's top-right edge. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
+The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
 The test DMG is ad-hoc signed and not notarized. The project does not disable SIP, modify system files, or inject code into other processes.

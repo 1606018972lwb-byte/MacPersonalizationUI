@@ -123,6 +123,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
 
     private func configurePanel() {
         panel.contentView = buttonsView
+        buttonsView.autoresizingMask = [.width, .height]
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = true
@@ -184,13 +185,15 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             showsRestore: actionService.isMaximizedByThisApp(targetWindow)
         )
 
-        // 控制条紧贴窗口右上角的外侧显示，不占用或覆盖目标应用标题栏。
-        // 使用本工具最大化时，WindowActionService 会在窗口上方预留同样高度的一整行。
-        let origin = CGPoint(
-            x: appKitFrame.maxX - appSettings.controlSize.panelSize.width,
-            y: appKitFrame.maxY
+        // 在窗口顶部外侧绘制一条与目标窗口等宽的完整占位行。三个按钮靠右排列，
+        // 左侧保持为空；最大化时 WindowActionService 会为整行预留同样的高度。
+        let overlaySize = CGSize(
+            width: appKitFrame.width,
+            height: appSettings.controlSize.buttonHeight
         )
-        panel.setFrameOrigin(origin)
+        panel.setContentSize(overlaySize)
+        panel.setFrameOrigin(CGPoint(x: appKitFrame.minX, y: appKitFrame.maxY))
+        buttonsView.frame = CGRect(origin: .zero, size: overlaySize)
         panel.orderFrontRegardless()
     }
 
@@ -236,7 +239,6 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private func applyControlSize(_ controlSize: AppSettings.ControlSize) {
         dispatchPrecondition(condition: .onQueue(.main))
         buttonsView.applyControlSize(controlSize)
-        panel.setContentSize(controlSize.panelSize)
         if let currentWindow {
             _ = actionService.updateReservedTopSpace(
                 for: currentWindow,

@@ -1,6 +1,6 @@
 import AppKit
 
-/// 承载最小化、最大化/还原和关闭按钮的半透明原生视觉效果视图。
+/// 绘制与目标窗口同宽的半透明占位行，三个窗口按钮固定排列在最右侧。
 final class WindowButtonsView: NSVisualEffectView {
     let minimizeButton = WindowControlButton(kind: .minimize)
     let maximizeButton = WindowControlButton(kind: .maximize)
@@ -37,7 +37,6 @@ final class WindowButtonsView: NSVisualEffectView {
             closeButton.heightAnchor.constraint(equalToConstant: 35)
         ]
         NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
             stackView.topAnchor.constraint(equalTo: topAnchor),
             stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
