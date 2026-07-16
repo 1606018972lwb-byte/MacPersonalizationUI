@@ -3,20 +3,18 @@ import ApplicationServices
 
 /// 管理辅助功能权限检查、系统授权提示和设置跳转。
 final class AccessibilityPermissionManager {
-    private var hasShownStartupGuidance = false
-
     /// 当前进程是否已获得控制其他应用窗口所需的辅助功能权限。
     var isTrusted: Bool {
         AXIsProcessTrusted()
     }
 
-    /// 首次启动时请求权限，并且只显示一次说明窗口，避免重复打扰用户。
-    func requestPermissionIfNeeded() {
-        guard !isTrusted, !hasShownStartupGuidance else {
+    /// 用户点击“立即授权”时请求权限并显示清晰说明。
+    func requestPermissionFromUser() {
+        if isTrusted {
+            showPermissionStatus()
             return
         }
 
-        hasShownStartupGuidance = true
         let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         let options = [promptKey: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)

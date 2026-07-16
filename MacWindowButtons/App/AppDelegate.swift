@@ -36,7 +36,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         overlayPanelController = overlayController
         overlayController.start()
-        permissionManager.requestPermissionIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
