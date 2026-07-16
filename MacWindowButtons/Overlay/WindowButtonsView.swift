@@ -5,6 +5,9 @@ final class WindowButtonsView: NSVisualEffectView {
     let minimizeButton = WindowControlButton(kind: .minimize)
     let maximizeButton = WindowControlButton(kind: .maximize)
     let closeButton = WindowControlButton(kind: .close)
+    var onEmptyAreaDragBegan: ((CGPoint) -> Void)?
+    var onEmptyAreaDragged: ((CGPoint) -> Void)?
+    var onEmptyAreaDragEnded: (() -> Void)?
     private var buttonWidthConstraints: [NSLayoutConstraint] = []
     private var buttonHeightConstraints: [NSLayoutConstraint] = []
 
@@ -46,6 +49,23 @@ final class WindowButtonsView: NSVisualEffectView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         nil
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    /// 空白占位区域充当目标窗口的标题栏；按钮区域仍由各按钮自行接收点击。
+    override func mouseDown(with event: NSEvent) {
+        onEmptyAreaDragBegan?(NSEvent.mouseLocation)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        onEmptyAreaDragged?(NSEvent.mouseLocation)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        onEmptyAreaDragEnded?()
     }
 
     /// 按目标窗口能力禁用不支持的操作，并更新最大化按钮图标。

@@ -17,6 +17,15 @@ final class WindowActionService {
         return window.element.setBooleanAttribute(kAXMinimizedAttribute, value: true)
     }
 
+    /// 将目标窗口移动到指定 AX 坐标；用于把顶部空白控制行变成可拖动标题栏。
+    @discardableResult
+    func move(_ window: TargetWindow, to position: CGPoint) -> Bool {
+        guard window.element.isAttributeSettable(kAXPositionAttribute) else {
+            return false
+        }
+        return window.element.setPointAttribute(kAXPositionAttribute, value: position)
+    }
+
     /// 最大化或还原窗口。最大化使用所在屏幕的 visibleFrame，不进入原生全屏空间。
     @discardableResult
     func toggleMaximize(_ window: TargetWindow, reservedTopHeight: CGFloat) -> Bool {

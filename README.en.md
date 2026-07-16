@@ -2,16 +2,18 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Local test version 1.1.2 includes:
+Local test version 1.1.3 includes:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - Focused-window discovery through `AXUIElement`.
 - A non-activating translucent `NSPanel` that follows the focused window.
 - An always-visible row matching the target window width, with an empty left placeholder and the three controls aligned right.
+- Event-driven `AXObserver` tracking for immediate move, resize, and focused-window updates.
+- Dragging the empty left area moves the target window like a Windows title bar.
 - Maximization reserves one full control-row above the target window so the controls never cover its title bar or content.
 - Minimize, maximize/restore, and close actions.
 - Per-window restore frames and multi-display coordinate conversion.
-- A 200ms compatibility polling interval with low timer tolerance.
+- A 1-second low-frequency compatibility fallback for applications that do not emit AX notifications.
 - A persistent Small, Standard, or Large control-size submenu in the menu bar.
 - Immediate resizing of all three buttons, their symbols, and the overlay panel.
 - Full rectangular hit targets of 38×30, 46×35, or 54×42 points, with no gaps or hidden alignment insets.

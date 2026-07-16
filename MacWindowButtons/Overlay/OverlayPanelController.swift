@@ -18,7 +18,105 @@ private final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-/// 轮询焦点窗口、定位悬浮面板并转发三个窗口控制动作。
+/// 使用 AXObserver 接收窗口移动、缩放和焦点变化事件，避免依赖低频轮询追随。
+private final class AccessibilityWindowTracker {
+    private var observer: AXObserver?
+    private var applicationElement: AXUIElement?
+    private var windowElement: AXUIElement?
+    private var trackedIdentifier: WindowIdentifier?
+    private let onWindowChanged: () -> Void
+
+    init(onWindowChanged: @escaping () -> Void) {
+        self.onWindowChanged = onWindowChanged
+    }
+
+    func track(_ window: TargetWindow) {
+        guard trackedIdentifier != window.identifier else {
+            return
+        }
+        stop()
+
+        var newObserver: AXObserver?
+        let result = AXObserverCreate(
+            window.processIdentifier,
+            accessibilityWindowChangeCallback,
+            &newObserver
+        )
+        guard result == .success, let newObserver else {
+            return
+        }
+
+        let application = AXUIElementCreateApplication(window.processIdentifier)
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        AXObserverAddNotification(
+            newObserver,
+            application,
+            kAXFocusedWindowChangedNotification as CFString,
+            context
+        )
+        for notification in [
+            kAXMovedNotification,
+            kAXResizedNotification,
+            kAXUIElementDestroyedNotification
+        ] {
+            AXObserverAddNotification(
+                newObserver,
+                window.element,
+                notification as CFString,
+                context
+            )
+        }
+
+        CFRunLoopAddSource(
+            CFRunLoopGetMain(),
+            AXObserverGetRunLoopSource(newObserver),
+            .commonModes
+        )
+        observer = newObserver
+        applicationElement = application
+        windowElement = window.element
+        trackedIdentifier = window.identifier
+    }
+
+    func stop() {
+        guard let observer else {
+            trackedIdentifier = nil
+            return
+        }
+        CFRunLoopRemoveSource(
+            CFRunLoopGetMain(),
+            AXObserverGetRunLoopSource(observer),
+            .commonModes
+        )
+        self.observer = nil
+        applicationElement = nil
+        windowElement = nil
+        trackedIdentifier = nil
+    }
+
+    fileprivate func windowDidChange() {
+        DispatchQueue.main.async { [weak self] in
+            self?.onWindowChanged()
+        }
+    }
+
+    deinit {
+        stop()
+    }
+}
+
+private let accessibilityWindowChangeCallback: AXObserverCallback = {
+    _, _, _, context in
+    guard let context else {
+        return
+    }
+    Unmanaged<AccessibilityWindowTracker>
+        .fromOpaque(context)
+        .takeUnretainedValue()
+        .windowDidChange()
+}
+
+/// 事件驱动跟随焦点窗口、代理空白行拖动，并转发三个窗口控制动作。
 final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private let applicationState: ApplicationState
     private let permissionManager: AccessibilityPermissionManager
@@ -32,6 +130,14 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private var currentWindow: TargetWindow?
     private var lastExternalWindow: TargetWindow?
     private var settingsObserverIdentifier: UUID?
+    private var workspaceObserver: NSObjectProtocol?
+    private var dragWindow: TargetWindow?
+    private var dragStartMouseLocation: CGPoint?
+    private var dragStartAccessibilityFrame: CGRect?
+    private var dragStartAppKitFrame: CGRect?
+    private lazy var windowTracker = AccessibilityWindowTracker { [weak self] in
+        self?.refreshOverlay()
+    }
 
     init(
         applicationState: ApplicationState,
@@ -72,17 +178,24 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         stop()
     }
 
-    /// 启动 200ms 低频兼容轮询，让面板跟随移动、缩放和应用切换。
+    /// AXObserver 负责实时跟随；1 秒轮询只作为不支持通知的应用的兼容兜底。
     func start() {
         guard refreshTimer == nil else {
             return
         }
 
         refreshOverlay()
-        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
             self?.refreshOverlay()
         }
-        timer.tolerance = 0.05
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.refreshOverlay()
+        }
+        timer.tolerance = 0.1
         RunLoop.main.add(timer, forMode: .common)
         refreshTimer = timer
     }
@@ -91,6 +204,11 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     func stop() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+        if let workspaceObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
+            self.workspaceObserver = nil
+        }
+        windowTracker.stop()
         currentWindow = nil
         hideOverlay()
     }
@@ -111,6 +229,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             displayOverlay(for: preferredWindow)
         } else {
             currentWindow = nil
+            windowTracker.stop()
             hideOverlay()
         }
 
@@ -142,6 +261,15 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         buttonsView.maximizeButton.action = #selector(toggleMaximizeWindow)
         buttonsView.closeButton.target = self
         buttonsView.closeButton.action = #selector(closeWindow)
+        buttonsView.onEmptyAreaDragBegan = { [weak self] mouseLocation in
+            self?.beginDraggingTargetWindow(at: mouseLocation)
+        }
+        buttonsView.onEmptyAreaDragged = { [weak self] mouseLocation in
+            self?.dragTargetWindow(to: mouseLocation)
+        }
+        buttonsView.onEmptyAreaDragEnded = { [weak self] in
+            self?.endDraggingTargetWindow()
+        }
     }
 
     private func refreshOverlay() {
@@ -149,6 +277,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         guard applicationState.areWindowButtonsEnabled,
               permissionManager.isTrusted else {
             currentWindow = nil
+            windowTracker.stop()
             hideOverlay()
             return
         }
@@ -162,6 +291,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
                 return
             }
             currentWindow = nil
+            windowTracker.stop()
             hideOverlay()
             return
         }
@@ -174,12 +304,14 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             fromAccessibilityRect: targetWindow.frame
         ) else {
             currentWindow = nil
+            windowTracker.stop()
             hideOverlay()
             return
         }
 
         currentWindow = targetWindow
         lastExternalWindow = targetWindow
+        windowTracker.track(targetWindow)
         buttonsView.updateCapabilities(
             for: targetWindow,
             showsRestore: actionService.isMaximizedByThisApp(targetWindow)
@@ -199,6 +331,54 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
 
     private func hideOverlay() {
         panel.orderOut(nil)
+    }
+
+    private func beginDraggingTargetWindow(at mouseLocation: CGPoint) {
+        guard let currentWindow,
+              let appKitFrame = ScreenCoordinateConverter.appKitRect(
+                fromAccessibilityRect: currentWindow.frame
+              ) else {
+            return
+        }
+        dragWindow = currentWindow
+        dragStartMouseLocation = mouseLocation
+        dragStartAccessibilityFrame = currentWindow.frame
+        dragStartAppKitFrame = appKitFrame
+    }
+
+    private func dragTargetWindow(to mouseLocation: CGPoint) {
+        guard let dragWindow,
+              let dragStartMouseLocation,
+              let dragStartAccessibilityFrame,
+              let dragStartAppKitFrame else {
+            return
+        }
+
+        let delta = CGPoint(
+            x: mouseLocation.x - dragStartMouseLocation.x,
+            y: mouseLocation.y - dragStartMouseLocation.y
+        )
+        let accessibilityPosition = CGPoint(
+            x: dragStartAccessibilityFrame.minX + delta.x,
+            y: dragStartAccessibilityFrame.minY - delta.y
+        )
+        _ = actionService.move(dragWindow, to: accessibilityPosition)
+
+        // 面板先在当前鼠标事件内移动，目标窗口的 AX 通知随后再校准位置。
+        panel.setFrameOrigin(
+            CGPoint(
+                x: dragStartAppKitFrame.minX + delta.x,
+                y: dragStartAppKitFrame.maxY + delta.y
+            )
+        )
+    }
+
+    private func endDraggingTargetWindow() {
+        dragWindow = nil
+        dragStartMouseLocation = nil
+        dragStartAccessibilityFrame = nil
+        dragStartAppKitFrame = nil
+        refreshOverlay()
     }
 
     @objc private func minimizeWindow() {
