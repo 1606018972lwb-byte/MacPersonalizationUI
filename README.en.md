@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that adds an independent Windows-style control strip to the top-right corner of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Version 1.11 includes:
+Version 1.0 includes:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - Focused-window discovery through `AXUIElement`.
@@ -31,6 +31,6 @@ Version 1.11 includes:
 - Automatic window scanning as soon as Accessibility permission becomes effective.
 - A DMG build script with a stable designated requirement for consistent local TCC identity across test updates.
 
-To test, install `dist/MacWindowButtons-1.11.dmg`. The main window opens automatically while the application stays out of the Dock. Repeated launches reuse the existing process, and the menu bar icon reopens the main window. If an old Accessibility toggle looks enabled but the app still reports missing permission, click “Reauthorize” once and enable the current app again. Permission changes trigger an automatic window scan.
+To test, install `dist/MacWindowButtons-1.0.dmg`. The main window opens automatically while the application stays out of the Dock. Repeated launches reuse the existing process, and the menu bar icon reopens the main window. If an old Accessibility toggle looks enabled but the app still reports missing permission, click “Reauthorize” once and enable the current app again. Permission changes trigger an automatic window scan.
 
 The test DMG is ad-hoc signed and not notarized. The project does not disable SIP, modify system files, or inject code into other processes.
