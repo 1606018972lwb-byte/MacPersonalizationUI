@@ -6,6 +6,7 @@ final class WindowButtonsView: NSVisualEffectView {
     let maximizeButton = WindowControlButton(kind: .maximize)
     let closeButton = WindowControlButton(kind: .close)
     private var buttonWidthConstraints: [NSLayoutConstraint] = []
+    private var buttonHeightConstraints: [NSLayoutConstraint] = []
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -21,7 +22,7 @@ final class WindowButtonsView: NSVisualEffectView {
         stackView.orientation = .horizontal
         stackView.alignment = .centerY
         stackView.distribution = .fillEqually
-        stackView.spacing = 1
+        stackView.spacing = 0
         stackView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stackView)
 
@@ -30,12 +31,17 @@ final class WindowButtonsView: NSVisualEffectView {
             maximizeButton.widthAnchor.constraint(equalToConstant: 36),
             closeButton.widthAnchor.constraint(equalToConstant: 36)
         ]
+        buttonHeightConstraints = [
+            minimizeButton.heightAnchor.constraint(equalToConstant: 35),
+            maximizeButton.heightAnchor.constraint(equalToConstant: 35),
+            closeButton.heightAnchor.constraint(equalToConstant: 35)
+        ]
         NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
-            stackView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -3),
-            stackView.topAnchor.constraint(equalTo: topAnchor, constant: 3),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -3)
-        ] + buttonWidthConstraints)
+            stackView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stackView.topAnchor.constraint(equalTo: topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ] + buttonWidthConstraints + buttonHeightConstraints)
     }
 
     @available(*, unavailable)
@@ -51,14 +57,17 @@ final class WindowButtonsView: NSVisualEffectView {
         maximizeButton.showRestoreSymbol(showsRestore)
     }
 
-    /// 同步三个按钮宽度和图标点大小，面板尺寸由控制器同时调整。
+    /// 同步三个按钮真实宽高和图标点大小，整个矩形都是鼠标命中区域。
     func applyControlSize(_ controlSize: AppSettings.ControlSize) {
         buttonWidthConstraints.forEach { constraint in
             constraint.constant = controlSize.buttonWidth
         }
+        buttonHeightConstraints.forEach { constraint in
+            constraint.constant = controlSize.buttonHeight
+        }
         minimizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         maximizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         closeButton.updateSymbolPointSize(controlSize.symbolPointSize)
-        layer?.cornerRadius = controlSize == .large ? 9 : 7
+        layer?.cornerRadius = controlSize == .large ? 8 : 7
     }
 }

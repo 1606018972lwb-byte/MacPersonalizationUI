@@ -18,16 +18,17 @@ final class AppSettings {
 
         var buttonWidth: CGFloat {
             switch self {
-            case .small: 30
-            case .standard: 36
-            case .large: 44
+            case .small: 38
+            case .standard: 46
+            case .large: 54
             }
         }
 
-        var panelHeight: CGFloat {
+        /// 每个按钮的真实高度；按钮会占满该矩形，整个区域都可以点击。
+        var buttonHeight: CGFloat {
             switch self {
             case .small: 30
-            case .standard: 34
+            case .standard: 35
             case .large: 42
             }
         }
@@ -36,13 +37,13 @@ final class AppSettings {
             switch self {
             case .small: 10
             case .standard: 12
-            case .large: 16
+            case .large: 15
             }
         }
 
-        /// 三个按钮宽度、两个间距和左右内边距共同组成面板尺寸。
+        /// 三个按钮无缝铺满面板，不再用外边距缩小实际点击区域。
         var panelSize: CGSize {
-            CGSize(width: buttonWidth * 3 + 8, height: panelHeight)
+            CGSize(width: buttonWidth * 3, height: buttonHeight)
         }
     }
 
