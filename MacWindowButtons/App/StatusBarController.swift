@@ -7,7 +7,10 @@ import AppKit
 final class StatusBarController: NSObject {
     private let applicationState: ApplicationState
     private let permissionManager: AccessibilityPermissionManager
+    private let appSettings: AppSettings
     private let statusItem: NSStatusItem
+    private var settingsObserverIdentifier: UUID?
+    private var controlSizeItems: [AppSettings.ControlSize: NSMenuItem] = [:]
 
     private lazy var enableItem = NSMenuItem(
         title: "启用窗口按钮",
@@ -24,18 +27,22 @@ final class StatusBarController: NSObject {
     /// - Parameters:
     ///   - applicationState: 跨模块共享的应用运行状态。
     ///   - permissionManager: 辅助功能权限检查与设置跳转服务。
+    ///   - appSettings: 按钮大小等用户偏好设置。
     init(
         applicationState: ApplicationState,
-        permissionManager: AccessibilityPermissionManager
+        permissionManager: AccessibilityPermissionManager,
+        appSettings: AppSettings
     ) {
         self.applicationState = applicationState
         self.permissionManager = permissionManager
+        self.appSettings = appSettings
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
         configureStatusButton()
         configureMenu()
         synchronizeMenuState()
+        synchronizeControlSizeMenu()
 
         applicationState.onWindowButtonsEnabledChange = { [weak self] _ in
             // 状态可能由后续后台服务改变，所有 AppKit 更新统一回到主线程。
@@ -43,9 +50,16 @@ final class StatusBarController: NSObject {
                 self?.synchronizeMenuState()
             }
         }
+
+        settingsObserverIdentifier = appSettings.addControlSizeObserver { [weak self] _ in
+            self?.synchronizeControlSizeMenu()
+        }
     }
 
     deinit {
+        if let settingsObserverIdentifier {
+            appSettings.removeControlSizeObserver(settingsObserverIdentifier)
+        }
         NSStatusBar.system.removeStatusItem(statusItem)
     }
 
@@ -83,6 +97,23 @@ final class StatusBarController: NSObject {
         )
         permissionItem.target = self
         menu.addItem(permissionItem)
+
+        let controlSizeMenu = NSMenu(title: "按钮大小")
+        for controlSize in AppSettings.ControlSize.allCases {
+            let item = NSMenuItem(
+                title: controlSize.displayName,
+                action: #selector(changeControlSize(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = controlSize.rawValue
+            controlSizeMenu.addItem(item)
+            controlSizeItems[controlSize] = item
+        }
+
+        let controlSizeItem = NSMenuItem(title: "按钮大小", action: nil, keyEquivalent: "")
+        controlSizeItem.submenu = controlSizeMenu
+        menu.addItem(controlSizeItem)
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
@@ -111,6 +142,16 @@ final class StatusBarController: NSObject {
         permissionManager.showPermissionStatus()
     }
 
+    /// 从菜单项读取大小标识并保存，悬浮控制条会通过设置监听立即更新。
+    @objc private func changeControlSize(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let controlSize = AppSettings.ControlSize(rawValue: rawValue) else {
+            NSLog("[MacWindowButtons] 无法识别按钮大小菜单项")
+            return
+        }
+        appSettings.setControlSize(controlSize)
+    }
+
     /// 安全结束应用，由 AppKit 执行完整的终止生命周期。
     @objc private func quitApplication() {
         NSApp.terminate(nil)
@@ -122,5 +163,11 @@ final class StatusBarController: NSObject {
         pauseItem.isEnabled = isEnabled
         enableItem.state = isEnabled ? .on : .off
         pauseItem.state = isEnabled ? .off : .on
+    }
+
+    private func synchronizeControlSizeMenu() {
+        for (controlSize, item) in controlSizeItems {
+            item.state = controlSize == appSettings.controlSize ? .on : .off
+        }
     }
 }

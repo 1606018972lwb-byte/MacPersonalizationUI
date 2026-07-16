@@ -20,6 +20,7 @@
 		A10000000000000000000011 /* WindowControlButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* WindowControlButton.swift */; };
 		A10000000000000000000012 /* WindowButtonsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* WindowButtonsView.swift */; };
 		A10000000000000000000013 /* OverlayPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* OverlayPanelController.swift */; };
+		A10000000000000000000014 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* AppSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		A20000000000000000000013 /* WindowControlButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowControlButton.swift; sourceTree = "<group>"; };
 		A20000000000000000000014 /* WindowButtonsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowButtonsView.swift; sourceTree = "<group>"; };
 		A20000000000000000000015 /* OverlayPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayPanelController.swift; sourceTree = "<group>"; };
+		A20000000000000000000016 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +69,7 @@
 				A40000000000000000000006 /* Accessibility */,
 				A40000000000000000000007 /* WindowControl */,
 				A40000000000000000000008 /* Overlay */,
+				A40000000000000000000009 /* Settings */,
 			);
 			path = MacWindowButtons;
 			sourceTree = "<group>";
@@ -126,6 +129,14 @@
 				A20000000000000000000015 /* OverlayPanelController.swift */,
 			);
 			path = Overlay;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000009 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000016 /* AppSettings.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -210,6 +221,7 @@
 				A10000000000000000000011 /* WindowControlButton.swift in Sources */,
 				A10000000000000000000012 /* WindowButtonsView.swift in Sources */,
 				A10000000000000000000013 /* OverlayPanelController.swift in Sources */,
+				A10000000000000000000014 /* AppSettings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -254,13 +266,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -273,13 +285,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

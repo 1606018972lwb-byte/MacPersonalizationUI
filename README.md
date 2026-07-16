@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-版本 1.1 已完成可操作的右侧窗口控制条：
+版本 1.2 已完成可操作的右侧窗口控制条和按钮大小设置：
 
 - 使用 `NSStatusItem` 提供菜单栏入口，不显示 Dock 图标。
 - 首次启动通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -18,16 +18,20 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 使用 200ms 低频定时器跟随窗口移动、缩放、切换和关闭。
 - 支持多显示器坐标转换、Retina、浅色和深色模式。
 - 不支持某项 AX 操作时，对应按钮自动禁用。
+- 点击菜单栏小图标，可以暂停、启用、检查权限或退出应用。
+- 菜单栏“按钮大小”提供小、标准、大三档，三个图标和控制条会立即同步缩放。
+- 按钮大小使用 `UserDefaults` 保存，退出或重启后仍保留选择。
 
 ## 安装与授权
 
-1. 打开 `dist/MacWindowButtons-1.1.dmg`。
+1. 打开 `dist/MacWindowButtons-1.2.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 在弹出的说明中点击“打开系统设置”。
 5. 前往“系统设置 → 隐私与安全性 → 辅助功能”，开启 MacWindowButtons。
 6. 如果列表中已经存在旧版本，请先关闭再重新开启开关；必要时删除旧项目后重新添加 `/Applications/MacWindowButtons.app`。
 7. 返回微信并点击微信窗口，右上角应出现三个控制按钮。
+8. 如需调整图标大小，点击顶部菜单栏小图标 →“按钮大小”→“小 / 标准 / 大”。
 
 授权后无需反复重启；应用每 200ms 低频检查一次权限和焦点窗口。若按钮仍未出现，可从菜单栏图标选择“检查辅助功能权限”。
 
@@ -42,6 +46,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 5. `OverlayPanelController` 使用非激活 `NSPanel` 定位控制条，不抢目标窗口键盘焦点。
 6. `WindowActionService` 执行窗口动作，`WindowStateStore` 为每个窗口保存还原尺寸。
 7. `ScreenCoordinateConverter` 统一 Accessibility 与 AppKit 坐标系。
+8. `AppSettings` 使用 `UserDefaults` 保存大小并通知菜单和悬浮面板刷新。
 
 ## 项目目录
 
@@ -60,10 +65,12 @@ MacWindowButtons/
 │   ├── WindowActionService.swift
 │   ├── WindowStateStore.swift
 │   └── ScreenCoordinateConverter.swift
-└── Overlay/
-    ├── OverlayPanelController.swift
-    ├── WindowButtonsView.swift
-    └── WindowControlButton.swift
+├── Overlay/
+│   ├── OverlayPanelController.swift
+│   ├── WindowButtonsView.swift
+│   └── WindowControlButton.swift
+└── Settings/
+    └── AppSettings.swift
 ```
 
 ## 开发进度
@@ -74,8 +81,9 @@ MacWindowButtons/
 - [x] 创建右上角悬浮控制条。
 - [x] 实现最小化、最大化/还原和关闭。
 - [x] 实现基础多显示器坐标转换。
+- [x] 增加菜单栏按钮大小设置与持久化。
 - [ ] 使用 `AXObserver` 替换主要轮询并保留低频兼容轮询。
-- [ ] 增加应用排除列表和设置页面。
+- [ ] 增加应用排除列表和完整设置页面。
 - [ ] 增加全局快捷键和开机启动。
 - [ ] 增加自动化测试、兼容性测试和正式签名公证。
 

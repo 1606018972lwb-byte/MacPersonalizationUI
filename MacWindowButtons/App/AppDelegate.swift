@@ -8,6 +8,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let applicationState = ApplicationState()
     private let permissionManager = AccessibilityPermissionManager()
+    private let appSettings = AppSettings()
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
 
@@ -24,12 +25,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             applicationState: applicationState,
             permissionManager: permissionManager,
             windowManager: windowManager,
-            actionService: actionService
+            actionService: actionService,
+            appSettings: appSettings
         )
 
         statusBarController = StatusBarController(
             applicationState: applicationState,
-            permissionManager: permissionManager
+            permissionManager: permissionManager,
+            appSettings: appSettings
         )
         overlayPanelController = overlayController
         overlayController.start()

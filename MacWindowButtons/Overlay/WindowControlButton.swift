@@ -26,9 +26,12 @@ final class WindowControlButton: NSButton {
 
     let kind: Kind
     private var trackingAreaReference: NSTrackingArea?
+    private var currentSymbolName: String
+    private var symbolPointSize: CGFloat = 12
 
     init(kind: Kind) {
         self.kind = kind
+        currentSymbolName = kind.symbolName
         super.init(frame: .zero)
 
         isBordered = false
@@ -52,11 +55,18 @@ final class WindowControlButton: NSButton {
         guard kind == .maximize else {
             return
         }
-        updateSymbol(named: shouldShowRestore ? "rectangle.on.rectangle" : "rectangle")
+        currentSymbolName = shouldShowRestore ? "rectangle.on.rectangle" : "rectangle"
+        updateSymbol(named: currentSymbolName)
         toolTip = shouldShowRestore ? "还原窗口" : "最大化窗口"
         if let toolTip {
             setAccessibilityLabel(toolTip)
         }
+    }
+
+    /// 按用户选择调整 SF Symbol 点大小。
+    func updateSymbolPointSize(_ pointSize: CGFloat) {
+        symbolPointSize = pointSize
+        updateSymbol(named: currentSymbolName)
     }
 
     override func updateTrackingAreas() {
@@ -91,7 +101,7 @@ final class WindowControlButton: NSButton {
     }
 
     private func updateSymbol(named symbolName: String) {
-        let configuration = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+        let configuration = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .medium)
         image = NSImage(
             systemSymbolName: symbolName,
             accessibilityDescription: kind.accessibilityTitle

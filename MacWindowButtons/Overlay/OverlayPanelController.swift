@@ -9,7 +9,6 @@ private final class OverlayPanel: NSPanel {
 /// 轮询焦点窗口、定位悬浮面板并转发三个窗口控制动作。
 final class OverlayPanelController: NSObject {
     private enum Layout {
-        static let panelSize = CGSize(width: 116, height: 34)
         static let rightInset: CGFloat = 8
         static let topInset: CGFloat = 5
     }
@@ -18,37 +17,50 @@ final class OverlayPanelController: NSObject {
     private let permissionManager: AccessibilityPermissionManager
     private let windowManager: AccessibilityWindowManager
     private let actionService: WindowActionService
+    private let appSettings: AppSettings
     private let panel: OverlayPanel
     private let buttonsView: WindowButtonsView
 
     private var refreshTimer: Timer?
     private var currentWindow: TargetWindow?
+    private var settingsObserverIdentifier: UUID?
 
     init(
         applicationState: ApplicationState,
         permissionManager: AccessibilityPermissionManager,
         windowManager: AccessibilityWindowManager,
-        actionService: WindowActionService
+        actionService: WindowActionService,
+        appSettings: AppSettings
     ) {
         self.applicationState = applicationState
         self.permissionManager = permissionManager
         self.windowManager = windowManager
         self.actionService = actionService
+        self.appSettings = appSettings
 
         panel = OverlayPanel(
-            contentRect: CGRect(origin: .zero, size: Layout.panelSize),
+            contentRect: CGRect(origin: .zero, size: appSettings.controlSize.panelSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
-        buttonsView = WindowButtonsView(frame: CGRect(origin: .zero, size: Layout.panelSize))
+        buttonsView = WindowButtonsView(
+            frame: CGRect(origin: .zero, size: appSettings.controlSize.panelSize)
+        )
         super.init()
 
         configurePanel()
         configureActions()
+        applyControlSize(appSettings.controlSize)
+        settingsObserverIdentifier = appSettings.addControlSizeObserver { [weak self] controlSize in
+            self?.applyControlSize(controlSize)
+        }
     }
 
     deinit {
+        if let settingsObserverIdentifier {
+            appSettings.removeControlSizeObserver(settingsObserverIdentifier)
+        }
         stop()
     }
 
@@ -117,8 +129,8 @@ final class OverlayPanelController: NSObject {
         )
 
         let origin = CGPoint(
-            x: appKitFrame.maxX - Layout.panelSize.width - Layout.rightInset,
-            y: appKitFrame.maxY - Layout.panelSize.height - Layout.topInset
+            x: appKitFrame.maxX - appSettings.controlSize.panelSize.width - Layout.rightInset,
+            y: appKitFrame.maxY - appSettings.controlSize.panelSize.height - Layout.topInset
         )
         panel.setFrameOrigin(origin)
         panel.orderFrontRegardless()
@@ -153,6 +165,15 @@ final class OverlayPanelController: NSObject {
     private func refreshOverlayAfterAction() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
             self?.refreshOverlay()
+        }
+    }
+
+    private func applyControlSize(_ controlSize: AppSettings.ControlSize) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        buttonsView.applyControlSize(controlSize)
+        panel.setContentSize(controlSize.panelSize)
+        if panel.isVisible {
+            refreshOverlay()
         }
     }
 }
