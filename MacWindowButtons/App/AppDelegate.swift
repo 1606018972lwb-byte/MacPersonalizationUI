@@ -12,6 +12,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
 
+    /// 无 Storyboard 项目的显式启动入口。
+    ///
+    /// AppKit 模板通常由 Main.storyboard 创建并连接应用代理。本项目完全使用代码构建
+    /// 界面，因此必须在进入事件循环前自行创建代理并赋给 NSApplication；否则应用虽会
+    /// 出现在程序坞，但 applicationDidFinishLaunching 不会执行，也就不会创建主窗口。
+    static func main() {
+        let application = NSApplication.shared
+        let delegate = AppDelegate()
+        application.delegate = delegate
+        application.setActivationPolicy(.regular)
+        application.run()
+    }
+
     /// 应用完成启动后创建菜单栏控制器。
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 使用普通前台应用策略：程序坞显示应用图标，用户再次点击或双击应用时
