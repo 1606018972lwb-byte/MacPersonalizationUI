@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that adds an independent Windows-style control strip to the top-right corner of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Version 1.10 includes:
+Version 1.11 includes:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - Focused-window discovery through `AXUIElement`.
@@ -21,8 +21,8 @@ Version 1.10 includes:
 - A right-click menu for opening settings, restarting the app, or quitting.
 - A main-window refresh action that scans all controllable windows and reports the count.
 - Immediate display of the minimize, maximize/restore, and close controls on the most recent target window after a refresh.
-- A persistent Dock icon while the application is running.
-- A standard main window that opens on first launch and reopens after double-clicking the app or clicking its Dock icon.
+- A UIElement menu bar mode that keeps the Dock icon hidden while the application is running.
+- A standard main window that opens on first launch and reopens after double-clicking the app or clicking its menu bar icon.
 - An explicit programmatic AppDelegate bootstrap for the storyboard-free project, ensuring launch callbacks always create the main window.
 - A process-level lock that permits only one running instance; repeated launches activate the existing instance and show its main window.
 - A single-instance-aware restart flow that releases the lock before launching the replacement process.
@@ -31,6 +31,6 @@ Version 1.10 includes:
 - Automatic window scanning as soon as Accessibility permission becomes effective.
 - A DMG build script with a stable designated requirement for consistent local TCC identity across test updates.
 
-To test, install `dist/MacWindowButtons-1.10.dmg`. The main window opens automatically and the application icon remains visible in the Dock. Repeated launches reuse the existing process. If an old Accessibility toggle looks enabled but the app still reports missing permission, click “Reauthorize” once and enable the current app again. Permission changes trigger an automatic window scan.
+To test, install `dist/MacWindowButtons-1.11.dmg`. The main window opens automatically while the application stays out of the Dock. Repeated launches reuse the existing process, and the menu bar icon reopens the main window. If an old Accessibility toggle looks enabled but the app still reports missing permission, click “Reauthorize” once and enable the current app again. Permission changes trigger an automatic window scan.
 
 The test DMG is ad-hoc signed and not notarized. The project does not disable SIP, modify system files, or inject code into other processes.

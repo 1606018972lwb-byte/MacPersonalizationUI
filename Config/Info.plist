@@ -22,9 +22,9 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
-	<!-- 作为普通前台应用运行，确保启动后在程序坞显示应用图标。 -->
+	<!-- 作为菜单栏附件应用运行：保留主界面，但不在程序坞显示图标。 -->
 	<key>LSUIElement</key>
-	<false/>
+	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>

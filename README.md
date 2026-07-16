@@ -4,9 +4,9 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-版本 1.10 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
+版本 1.11 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
 
-- 作为普通前台应用运行，启动后同时显示程序坞图标和 `NSStatusItem` 菜单栏入口。
+- 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
 - 控制中心可以检查权限状态并跳转到系统设置的辅助功能页面。
 - 使用 `NSWorkspace` 和 `AXUIElement` 读取当前前台应用及焦点窗口。
@@ -21,7 +21,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 启动后在顶部菜单栏显示小图标，点击后打开原生 AppKit 控制中心。
 - 菜单栏图标使用系统模板渲染，在蓝色、深色和浅色菜单栏上保持高对比可见。
 - 右键菜单栏图标可以打开设置界面、重新启动软件或退出程序。
-- 首次双击启动自动显示主界面；应用运行中再次双击或点击程序坞图标也会重新打开并置前。
+- 首次双击启动自动显示主界面；应用运行中再次双击或点击顶部菜单栏图标也会重新打开并置前。
 - 无 Storyboard 启动时显式创建并持有 `AppDelegate`，确保应用生命周期回调和主窗口创建一定执行。
 - 使用进程级文件锁保证应用只能运行一个实例；重复启动会唤醒已有实例并打开主界面。
 - “重新启动软件”会先退出当前实例，释放单实例锁后再安全启动新进程。
@@ -41,7 +41,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 打开 `dist/MacWindowButtons-1.10.dmg`。
+1. 打开 `dist/MacWindowButtons-1.11.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在控制中心点击“立即授权”。
@@ -124,7 +124,7 @@ MacWindowButtons/
 - UI 框架：AppKit
 - 生命周期：`NSApplicationDelegate`
 - Bundle Identifier：`com.lwb.MacWindowButtons`
-- `Application is agent (UIElement)`：关闭，应用运行时显示程序坞图标
+- `Application is agent (UIElement)`：启用，应用运行时不显示程序坞图标
 
 命令行构建：
 

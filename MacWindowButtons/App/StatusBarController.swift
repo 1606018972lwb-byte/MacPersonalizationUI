@@ -11,7 +11,7 @@ final class StatusBarController: NSObject {
     private var permissionTimer: Timer?
     private var lastKnownPermissionState: Bool?
 
-    /// 供应用生命周期判断程序坞点击时是否需要恢复主界面。
+    /// 供应用生命周期判断再次激活时是否需要恢复主界面。
     var isControlCenterVisible: Bool {
         controlCenterWindow.isVisible
     }
@@ -69,7 +69,7 @@ final class StatusBarController: NSObject {
         controlCenterWindow.isReleasedWhenClosed = false
         controlCenterWindow.hidesOnDeactivate = false
         controlCenterWindow.isMovableByWindowBackground = true
-        // 主界面使用普通窗口层级，可在程序坞点击应用时按标准 macOS 行为置前。
+        // 主界面使用普通窗口层级，可由菜单栏图标或再次双击应用置前。
         controlCenterWindow.level = .normal
         controlCenterWindow.collectionBehavior = [.moveToActiveSpace]
         controlCenterWindow.contentViewController = controlCenterViewController
@@ -164,9 +164,8 @@ final class StatusBarController: NSObject {
     /// 主动打开控制中心。应用首次启动和用户再次双击应用时都会调用。
     func showControlCenter() {
         dispatchPrecondition(condition: .onQueue(.main))
-        // 即使旧版偏好或启动环境曾把应用作为后台附件运行，也在打开主界面前
-        // 恢复普通前台策略，保证程序坞图标和窗口激活行为一致。
-        NSApp.setActivationPolicy(.regular)
+        // 保持附件应用策略，打开主界面时也不让程序坞图标重新出现。
+        NSApp.setActivationPolicy(.accessory)
         updateStatusButtonAppearance()
         controlCenterViewController.refreshInterface()
 
@@ -174,13 +173,11 @@ final class StatusBarController: NSObject {
             controlCenterWindow.center()
         }
 
-        // macOS 14 提供无参数激活接口；macOS 13 使用当时仍有效的兼容接口。
-        if #available(macOS 14.0, *) {
-            NSApp.activate()
-        } else {
-            NSApp.activate(ignoringOtherApps: true)
-        }
+        // UIElement 附件应用不会因普通 activate() 自动置前，必须显式忽略其他应用；
+        // orderFrontRegardless 确保首次双击和菜单栏点击都能看到主界面。
+        NSApp.activate(ignoringOtherApps: true)
         controlCenterWindow.makeKeyAndOrderFront(nil)
+        controlCenterWindow.orderFrontRegardless()
         NSLog("[MacWindowButtons] 控制中心已显示")
 
         // 已经授权时，打开主界面会主动重新扫描窗口；未授权时只显示状态卡，

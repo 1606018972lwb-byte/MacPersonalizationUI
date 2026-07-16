@@ -81,8 +81,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 无 Storyboard 项目的显式启动入口。
     ///
     /// AppKit 模板通常由 Main.storyboard 创建并连接应用代理。本项目完全使用代码构建
-    /// 界面，因此必须在进入事件循环前自行创建代理并赋给 NSApplication；否则应用虽会
-    /// 出现在程序坞，但 applicationDidFinishLaunching 不会执行，也就不会创建主窗口。
+    /// 界面，因此必须在进入事件循环前自行创建代理并赋给 NSApplication；否则
+    /// applicationDidFinishLaunching 不会执行，也就不会创建主窗口和菜单栏图标。
     static func main() {
         let singleInstanceCoordinator = SingleInstanceCoordinator()
         guard singleInstanceCoordinator.acquireLock() else {
@@ -93,15 +93,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let application = NSApplication.shared
         let delegate = AppDelegate(singleInstanceCoordinator: singleInstanceCoordinator)
         application.delegate = delegate
-        application.setActivationPolicy(.regular)
+        application.setActivationPolicy(.accessory)
         application.run()
     }
 
     /// 应用完成启动后创建菜单栏控制器。
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // 使用普通前台应用策略：程序坞显示应用图标，用户再次点击或双击应用时
-        // 系统能够把激活事件交给 applicationShouldHandleReopen。
-        NSApp.setActivationPolicy(.regular)
+        // 使用菜单栏附件策略：窗口可以正常显示，但应用图标不会进入程序坞。
+        NSApp.setActivationPolicy(.accessory)
         DistributedNotificationCenter.default().addObserver(
             self,
             selector: #selector(showMainWindowFromSecondLaunch),
@@ -130,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayPanelController = overlayController
         overlayController.start()
 
-        // 等待应用完成首次激活后立即显示主界面，避免双击应用后只看到程序坞图标。
+        // 等待应用完成首次激活后立即显示主界面。
         DispatchQueue.main.async {
             statusController.showControlCenter()
         }
@@ -143,11 +142,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 强制启动第二个进程时，由单实例协调器把启动意图转发到这里。
     @objc private func showMainWindowFromSecondLaunch(_ notification: Notification) {
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(.accessory)
         statusBarController?.showControlCenter()
     }
 
-    /// 用户从程序坞点回应用时，如果主界面已关闭，则自动重新显示。
+    /// 应用重新成为活动状态时，如果主界面已关闭，则自动重新显示。
     func applicationDidBecomeActive(_ notification: Notification) {
         DispatchQueue.main.async { [weak self] in
             guard let statusBarController = self?.statusBarController,
@@ -163,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        sender.setActivationPolicy(.regular)
+        sender.setActivationPolicy(.accessory)
         statusBarController?.showControlCenter()
         // 主界面已由上面的调用恢复，不再请求 AppKit 执行默认的窗口恢复流程。
         return false
