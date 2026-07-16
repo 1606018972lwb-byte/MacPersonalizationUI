@@ -20,29 +20,18 @@ private final class OverlayPanel: NSPanel {
 
 /// 轮询焦点窗口、定位悬浮面板并转发三个窗口控制动作。
 final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
-    private enum Layout {
-        /// 控制条位于标题栏下方，避免遮挡目标应用右上角原生工具按钮。
-        static let topClearance: CGFloat = 52
-        static let revealHandleWidth: CGFloat = 7
-        static let revealDuration: TimeInterval = 0.9
-        static let manualRevealDuration: TimeInterval = 2.0
-    }
-
     private let applicationState: ApplicationState
     private let permissionManager: AccessibilityPermissionManager
     private let windowManager: AccessibilityWindowManager
     private let actionService: WindowActionService
     private let appSettings: AppSettings
     private let panel: OverlayPanel
-    private let revealHandlePanel: OverlayPanel
     private let buttonsView: WindowButtonsView
 
     private var refreshTimer: Timer?
     private var currentWindow: TargetWindow?
     private var lastExternalWindow: TargetWindow?
-    private var revealUntil: TimeInterval = 0
     private var settingsObserverIdentifier: UUID?
-    private var autoHideObserverIdentifier: UUID?
 
     init(
         applicationState: ApplicationState,
@@ -63,41 +52,22 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             backing: .buffered,
             defer: false
         )
-        revealHandlePanel = OverlayPanel(
-            contentRect: CGRect(
-                origin: .zero,
-                size: CGSize(
-                    width: Layout.revealHandleWidth,
-                    height: appSettings.controlSize.buttonHeight
-                )
-            ),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
         buttonsView = WindowButtonsView(
             frame: CGRect(origin: .zero, size: appSettings.controlSize.panelSize)
         )
         super.init()
 
         configurePanel()
-        configureRevealHandlePanel()
         configureActions()
         applyControlSize(appSettings.controlSize)
         settingsObserverIdentifier = appSettings.addControlSizeObserver { [weak self] controlSize in
             self?.applyControlSize(controlSize)
-        }
-        autoHideObserverIdentifier = appSettings.addAutoHideObserver { [weak self] _ in
-            self?.refreshOverlay()
         }
     }
 
     deinit {
         if let settingsObserverIdentifier {
             appSettings.removeControlSizeObserver(settingsObserverIdentifier)
-        }
-        if let autoHideObserverIdentifier {
-            appSettings.removeAutoHideObserver(autoHideObserverIdentifier)
         }
         stop()
     }
@@ -122,7 +92,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         refreshTimer?.invalidate()
         refreshTimer = nil
         currentWindow = nil
-        hideOverlayAndHandle()
+        hideOverlay()
     }
 
     /// 扫描全部普通应用窗口，并立即为最近的外部目标窗口显示三个控件。
@@ -138,11 +108,10 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         } ?? discoveredWindows.first
 
         if let preferredWindow {
-            revealUntil = ProcessInfo.processInfo.systemUptime + Layout.manualRevealDuration
             displayOverlay(for: preferredWindow)
         } else {
             currentWindow = nil
-            hideOverlayAndHandle()
+            hideOverlay()
         }
 
         return WindowRefreshResult(
@@ -165,29 +134,6 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         panel.animationBehavior = .none
     }
 
-    /// 右侧边缘只保留一个不会拦截点击的细提示条；鼠标进入后展开完整控制条。
-    private func configureRevealHandlePanel() {
-        let handleView = NSView()
-        handleView.wantsLayer = true
-        handleView.layer?.backgroundColor = NSColor.systemBlue.withAlphaComponent(0.72).cgColor
-        handleView.layer?.cornerRadius = Layout.revealHandleWidth / 2
-        revealHandlePanel.contentView = handleView
-        revealHandlePanel.backgroundColor = .clear
-        revealHandlePanel.isOpaque = false
-        revealHandlePanel.hasShadow = false
-        revealHandlePanel.hidesOnDeactivate = false
-        revealHandlePanel.isMovable = false
-        revealHandlePanel.level = .floating
-        revealHandlePanel.collectionBehavior = [
-            .canJoinAllSpaces,
-            .fullScreenAuxiliary,
-            .stationary
-        ]
-        // 提示条本身完全点击穿透，不会挡住目标应用下方的内容。
-        revealHandlePanel.ignoresMouseEvents = true
-        revealHandlePanel.animationBehavior = .none
-    }
-
     private func configureActions() {
         buttonsView.minimizeButton.target = self
         buttonsView.minimizeButton.action = #selector(minimizeWindow)
@@ -202,7 +148,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         guard applicationState.areWindowButtonsEnabled,
               permissionManager.isTrusted else {
             currentWindow = nil
-            hideOverlayAndHandle()
+            hideOverlay()
             return
         }
 
@@ -215,7 +161,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
                 return
             }
             currentWindow = nil
-            hideOverlayAndHandle()
+            hideOverlay()
             return
         }
 
@@ -227,7 +173,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             fromAccessibilityRect: targetWindow.frame
         ) else {
             currentWindow = nil
-            hideOverlayAndHandle()
+            hideOverlay()
             return
         }
 
@@ -238,51 +184,18 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             showsRestore: actionService.isMaximizedByThisApp(targetWindow)
         )
 
+        // 控制条紧贴窗口右上角的外侧显示，不占用或覆盖目标应用标题栏。
+        // 使用本工具最大化时，WindowActionService 会在窗口上方预留同样高度的一整行。
         let origin = CGPoint(
             x: appKitFrame.maxX - appSettings.controlSize.panelSize.width,
             y: appKitFrame.maxY
-                - Layout.topClearance
-                - appSettings.controlSize.panelSize.height
         )
         panel.setFrameOrigin(origin)
-        updateVisibility(for: appKitFrame, panelOrigin: origin)
+        panel.orderFrontRegardless()
     }
 
-    private func updateVisibility(for windowFrame: CGRect, panelOrigin: CGPoint) {
-        guard appSettings.automaticallyHidesControls else {
-            revealHandlePanel.orderOut(nil)
-            panel.orderFrontRegardless()
-            return
-        }
-
-        let handleFrame = CGRect(
-            x: windowFrame.maxX - Layout.revealHandleWidth,
-            y: panelOrigin.y,
-            width: Layout.revealHandleWidth,
-            height: appSettings.controlSize.buttonHeight
-        )
-        revealHandlePanel.setFrame(handleFrame, display: true)
-
-        let mouseLocation = NSEvent.mouseLocation
-        let isOverHandle = handleFrame.insetBy(dx: -4, dy: -4).contains(mouseLocation)
-        let isOverControls = panel.frame.insetBy(dx: -4, dy: -4).contains(mouseLocation)
-        let now = ProcessInfo.processInfo.systemUptime
-        if isOverHandle || isOverControls {
-            revealUntil = now + Layout.revealDuration
-        }
-
-        if now <= revealUntil {
-            revealHandlePanel.orderOut(nil)
-            panel.orderFrontRegardless()
-        } else {
-            panel.orderOut(nil)
-            revealHandlePanel.orderFrontRegardless()
-        }
-    }
-
-    private func hideOverlayAndHandle() {
+    private func hideOverlay() {
         panel.orderOut(nil)
-        revealHandlePanel.orderOut(nil)
     }
 
     @objc private func minimizeWindow() {
@@ -290,7 +203,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             return
         }
         if actionService.minimize(currentWindow) {
-            hideOverlayAndHandle()
+            hideOverlay()
         }
     }
 
@@ -298,7 +211,10 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         guard let currentWindow else {
             return
         }
-        _ = actionService.toggleMaximize(currentWindow)
+        _ = actionService.toggleMaximize(
+            currentWindow,
+            reservedTopHeight: appSettings.controlSize.buttonHeight
+        )
         refreshOverlayAfterAction()
     }
 
@@ -307,7 +223,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             return
         }
         if actionService.close(currentWindow) {
-            hideOverlayAndHandle()
+            hideOverlay()
         }
     }
 
@@ -321,9 +237,12 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         dispatchPrecondition(condition: .onQueue(.main))
         buttonsView.applyControlSize(controlSize)
         panel.setContentSize(controlSize.panelSize)
-        revealHandlePanel.setContentSize(
-            CGSize(width: Layout.revealHandleWidth, height: controlSize.buttonHeight)
-        )
+        if let currentWindow {
+            _ = actionService.updateReservedTopSpace(
+                for: currentWindow,
+                reservedTopHeight: controlSize.buttonHeight
+            )
+        }
         refreshOverlay()
     }
 }

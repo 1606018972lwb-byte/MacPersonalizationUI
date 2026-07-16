@@ -19,7 +19,7 @@ final class WindowActionService {
 
     /// 最大化或还原窗口。最大化使用所在屏幕的 visibleFrame，不进入原生全屏空间。
     @discardableResult
-    func toggleMaximize(_ window: TargetWindow) -> Bool {
+    func toggleMaximize(_ window: TargetWindow, reservedTopHeight: CGFloat) -> Bool {
         guard window.canResize else {
             return false
         }
@@ -32,11 +32,21 @@ final class WindowActionService {
             return didRestore
         }
 
-        guard let screen = ScreenCoordinateConverter.screen(containingAccessibilityRect: window.frame),
-              let maximizeFrame = ScreenCoordinateConverter.accessibilityRect(
-                fromAppKitRect: screen.visibleFrame
-              ) else {
+        guard let screen = ScreenCoordinateConverter.screen(containingAccessibilityRect: window.frame) else {
             NSLog("[MacWindowButtons] 无法确定目标窗口所在显示器")
+            return false
+        }
+
+        var appKitMaximizeFrame = screen.visibleFrame
+        // 最大化窗口顶部主动空出一整行，控制条位于这一行内，不覆盖应用内容。
+        appKitMaximizeFrame.size.height = max(
+            80,
+            appKitMaximizeFrame.height - reservedTopHeight
+        )
+        guard let maximizeFrame = ScreenCoordinateConverter.accessibilityRect(
+                fromAppKitRect: appKitMaximizeFrame
+              ) else {
+            NSLog("[MacWindowButtons] 无法转换最大化窗口坐标")
             return false
         }
 
@@ -69,6 +79,29 @@ final class WindowActionService {
     /// 控制条根据是否存在还原信息切换最大化/还原图标。
     func isMaximizedByThisApp(_ window: TargetWindow) -> Bool {
         stateStore.hasRestoreFrame(for: window.identifier)
+    }
+
+    /// 按钮大小改变时同步调整已由本工具最大化的窗口，始终保留恰好一行空间。
+    @discardableResult
+    func updateReservedTopSpace(
+        for window: TargetWindow,
+        reservedTopHeight: CGFloat
+    ) -> Bool {
+        guard stateStore.hasRestoreFrame(for: window.identifier),
+              let screen = ScreenCoordinateConverter.screen(
+                containingAccessibilityRect: window.frame
+              ) else {
+            return false
+        }
+
+        var appKitFrame = screen.visibleFrame
+        appKitFrame.size.height = max(80, appKitFrame.height - reservedTopHeight)
+        guard let accessibilityFrame = ScreenCoordinateConverter.accessibilityRect(
+            fromAppKitRect: appKitFrame
+        ) else {
+            return false
+        }
+        return apply(frame: accessibilityFrame, to: window.element)
     }
 
     private func apply(frame: CGRect, to element: AXUIElement) -> Bool {

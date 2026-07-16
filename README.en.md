@@ -1,15 +1,14 @@
 # MacWindowButtons
 
-MacWindowButtons is a Swift and AppKit menu bar utility that reveals an independent Windows-style control strip from the right edge of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
+MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control strip above the top-right edge of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Version 1.1 includes:
+Local test version 1.1.1 includes:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - Focused-window discovery through `AXUIElement`.
 - A non-activating translucent `NSPanel` that follows the focused window.
-- Default edge auto-hide below the title bar, preventing the overlay from covering native toolbar controls.
-- A 7-point click-through blue reveal handle; hovering expands the controls and leaving hides them after about 0.9 seconds.
-- A control-center switch for disabling auto-hide when persistent controls are preferred.
+- An always-visible control strip aligned outside the window's top-right edge.
+- Maximization reserves one full control-row above the target window so the controls never cover its title bar or content.
 - Minimize, maximize/restore, and close actions.
 - Per-window restore frames and multi-display coordinate conversion.
 - A 200ms compatibility polling interval with low timer tolerance.
@@ -34,6 +33,6 @@ Version 1.1 includes:
 - Automatic window scanning as soon as Accessibility permission becomes effective.
 - A DMG build script with a stable designated requirement for consistent local TCC identity across test updates.
 
-To test, install `dist/MacWindowButtons-1.1.dmg`. The main window opens automatically while the application stays out of the Dock. Move the pointer over the blue handle below the focused window's title bar to reveal the three controls. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
+The main window opens automatically while the application stays out of the Dock. The three controls remain visible above the focused window's top-right edge. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
 The test DMG is ad-hoc signed and not notarized. The project does not disable SIP, modify system files, or inject code into other processes.

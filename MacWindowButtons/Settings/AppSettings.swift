@@ -49,25 +49,18 @@ final class AppSettings {
 
     private enum Key {
         static let controlSize = "windowControlButtonSize"
-        static let automaticallyHidesControls = "automaticallyHidesWindowControls"
     }
 
     private let defaults: UserDefaults
     private var controlSizeObservers: [UUID: (ControlSize) -> Void] = [:]
-    private var autoHideObservers: [UUID: (Bool) -> Void] = [:]
 
     private(set) var controlSize: ControlSize
-    private(set) var automaticallyHidesControls: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         controlSize = ControlSize(
             rawValue: defaults.string(forKey: Key.controlSize) ?? ""
         ) ?? .standard
-        // 新安装默认开启，避免控制条长期盖住目标应用自己的标题栏工具按钮。
-        automaticallyHidesControls = defaults.object(
-            forKey: Key.automaticallyHidesControls
-        ) as? Bool ?? true
     }
 
     /// 保存按钮大小，并通知菜单和悬浮面板立即刷新。
@@ -96,26 +89,4 @@ final class AppSettings {
         controlSizeObservers.removeValue(forKey: identifier)
     }
 
-    /// 保存自动隐藏选项，并让悬浮控制器立即更新显示方式。
-    func setAutomaticallyHidesControls(_ shouldHide: Bool) {
-        guard automaticallyHidesControls != shouldHide else {
-            return
-        }
-        automaticallyHidesControls = shouldHide
-        defaults.set(shouldHide, forKey: Key.automaticallyHidesControls)
-        Array(autoHideObservers.values).forEach { observer in
-            observer(shouldHide)
-        }
-    }
-
-    @discardableResult
-    func addAutoHideObserver(_ observer: @escaping (Bool) -> Void) -> UUID {
-        let identifier = UUID()
-        autoHideObservers[identifier] = observer
-        return identifier
-    }
-
-    func removeAutoHideObserver(_ identifier: UUID) {
-        autoHideObservers.removeValue(forKey: identifier)
-    }
 }

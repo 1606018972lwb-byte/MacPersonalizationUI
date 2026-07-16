@@ -31,7 +31,7 @@ final class StatusBarController: NSObject {
             windowRefresher: windowRefresher
         )
         controlCenterWindow = NSWindow(
-            contentRect: CGRect(origin: .zero, size: CGSize(width: 340, height: 470)),
+            contentRect: CGRect(origin: .zero, size: CGSize(width: 340, height: 420)),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
