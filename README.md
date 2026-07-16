@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-版本 1.8 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
+版本 1.9 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
 
 - 作为普通前台应用运行，启动后同时显示程序坞图标和 `NSStatusItem` 菜单栏入口。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -25,6 +25,10 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 无 Storyboard 启动时显式创建并持有 `AppDelegate`，确保应用生命周期回调和主窗口创建一定执行。
 - 使用进程级文件锁保证应用只能运行一个实例；重复启动会唤醒已有实例并打开主界面。
 - “重新启动软件”会先退出当前实例，释放单实例锁后再安全启动新进程。
+- 启动和刷新时不再反复弹出权限窗口；只有用户主动点击时才请求系统权限。
+- “重新授权”可以清理旧临时签名遗留的失效权限记录，并重新请求当前版本权限。
+- 权限生效后会自动启用功能、扫描窗口并显示三个控制按钮，无需手动重启。
+- 本地 DMG 构建脚本使用稳定的 designated requirement，后续测试版本不再因 cdhash 改变而丢失权限。
 - 控制中心可以暂停、启用、检查权限、调整大小或退出应用。
 - 缺少权限时右上角显示警告三角图标，控制中心显示橙色警告卡并主动弹出授权说明。
 - “按钮大小”提供小、标准、大三档，三个图标和控制条会立即同步缩放。
@@ -35,7 +39,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 打开 `dist/MacWindowButtons-1.8.dmg`。
+1. 打开 `dist/MacWindowButtons-1.9.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在控制中心点击“立即授权”。
@@ -45,6 +49,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 8. 如需调整图标大小，在控制中心选择“小 / 标准 / 大”。
 9. 右键顶部菜单栏图标，可以打开设置、重新启动或退出程序。
 10. 如需重新发现窗口，打开主界面并点击“刷新所有程序窗口”。
+
+从旧的临时签名版本升级时，如果系统设置里的开关显示开启但应用仍提示缺少权限，请点击主界面的“重新授权”，然后在系统设置中重新开启一次。1.9 之后通过项目脚本生成的测试包使用稳定权限身份。
 
 授权后无需反复重启；应用每 200ms 低频检查一次权限和焦点窗口。若按钮仍未出现，点击菜单栏小图标查看控制中心的权限状态。
 
@@ -116,7 +122,7 @@ MacWindowButtons/
 - UI 框架：AppKit
 - 生命周期：`NSApplicationDelegate`
 - Bundle Identifier：`com.lwb.MacWindowButtons`
-- `Application is agent (UIElement)`：启用
+- `Application is agent (UIElement)`：关闭，应用运行时显示程序坞图标
 
 命令行构建：
 
@@ -125,6 +131,12 @@ xcodebuild -project MacWindowButtons.xcodeproj \
   -scheme MacWindowButtons \
   -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
+```
+
+生成带稳定本地签名要求的测试 DMG：
+
+```bash
+./Scripts/build-dmg.sh
 ```
 
 ## 重要限制

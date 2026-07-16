@@ -108,6 +108,17 @@ final class ControlCenterViewController: NSViewController {
         }
     }
 
+    /// 权限刚生效或主界面重新打开时，自动启用功能并立即扫描窗口。
+    func refreshWindowsAfterPermissionGrant() {
+        guard permissionManager.isTrusted,
+              let windowRefresher else {
+            return
+        }
+        applicationState.enableWindowButtons()
+        enableSwitch.state = .on
+        updateRefreshStatus(with: windowRefresher.refreshAllWindows())
+    }
+
     private func makeHeaderView() -> NSView {
         let iconView = NSImageView(image: NSApp.applicationIconImage)
         iconView.imageScaling = .scaleProportionallyUpOrDown
@@ -272,8 +283,8 @@ final class ControlCenterViewController: NSViewController {
             permissionBox.borderColor = NSColor.systemGreen.withAlphaComponent(0.25)
         } else {
             permissionTitleLabel.stringValue = "缺少辅助功能权限"
-            permissionDetailLabel.stringValue = "点击授权后，才能在微信右侧显示按钮"
-            permissionButton.title = "立即授权"
+            permissionDetailLabel.stringValue = "开关已打开仍无效时，请点击重新授权"
+            permissionButton.title = "重新授权"
             permissionIcon.image = NSImage(
                 systemSymbolName: "exclamationmark.triangle.fill",
                 accessibilityDescription: "缺少权限"
@@ -292,8 +303,24 @@ final class ControlCenterViewController: NSViewController {
     }
 
     @objc private func showPermissionHelp() {
-        permissionManager.requestPermissionFromUser()
-        refreshInterface()
+        if permissionManager.isTrusted {
+            permissionManager.showPermissionStatus()
+            return
+        }
+
+        permissionButton.isEnabled = false
+        permissionDetailLabel.stringValue = "正在清理旧权限记录…"
+        permissionManager.repairPermissionFromUser { [weak self] errorMessage in
+            guard let self else {
+                return
+            }
+            permissionButton.isEnabled = true
+            if let errorMessage {
+                permissionDetailLabel.stringValue = errorMessage
+            } else {
+                permissionDetailLabel.stringValue = "请在系统提示中打开设置并重新开启权限"
+            }
+        }
     }
 
     @objc private func toggleWindowButtons(_ sender: NSSwitch) {
@@ -323,7 +350,6 @@ final class ControlCenterViewController: NSViewController {
     @objc private func refreshAllWindows() {
         guard permissionManager.isTrusted else {
             refreshStatusLabel.stringValue = "缺少辅助功能权限，授权后才能扫描窗口。"
-            permissionManager.requestPermissionFromUser()
             refreshInterface()
             return
         }
@@ -334,7 +360,10 @@ final class ControlCenterViewController: NSViewController {
             return
         }
 
-        let result = windowRefresher.refreshAllWindows()
+        updateRefreshStatus(with: windowRefresher.refreshAllWindows())
+    }
+
+    private func updateRefreshStatus(with result: WindowRefreshResult) {
         enableSwitch.state = .on
         if result.discoveredWindowCount == 0 {
             refreshStatusLabel.stringValue = "没有找到可控制的普通应用窗口。"

@@ -10,7 +10,6 @@ final class StatusBarController: NSObject {
 
     private var permissionTimer: Timer?
     private var lastKnownPermissionState: Bool?
-    private var hasPresentedMissingPermissionAlert = false
 
     /// 供应用生命周期判断程序坞点击时是否需要恢复主界面。
     var isControlCenterVisible: Bool {
@@ -184,11 +183,10 @@ final class StatusBarController: NSObject {
         controlCenterWindow.makeKeyAndOrderFront(nil)
         NSLog("[MacWindowButtons] 控制中心已显示")
 
-        if !permissionManager.isTrusted, !hasPresentedMissingPermissionAlert {
-            hasPresentedMissingPermissionAlert = true
-            DispatchQueue.main.async { [weak self] in
-                self?.permissionManager.requestPermissionFromUser()
-            }
+        // 已经授权时，打开主界面会主动重新扫描窗口；未授权时只显示状态卡，
+        // 不在每次启动或双击时反复弹出系统权限窗口。
+        if permissionManager.isTrusted {
+            controlCenterViewController.refreshWindowsAfterPermissionGrant()
         }
     }
 
@@ -204,6 +202,9 @@ final class StatusBarController: NSObject {
                 lastKnownPermissionState = currentState
                 updateStatusButtonAppearance()
                 controlCenterViewController.refreshInterface()
+                if currentState {
+                    controlCenterViewController.refreshWindowsAfterPermissionGrant()
+                }
             }
         }
         timer.tolerance = 0.2
