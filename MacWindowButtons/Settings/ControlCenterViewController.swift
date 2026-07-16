@@ -31,6 +31,12 @@ final class ControlCenterViewController: NSViewController {
         target: self,
         action: #selector(changeControlSize(_:))
     )
+    private lazy var autoHideSwitch: NSSwitch = {
+        let control = NSSwitch()
+        control.target = self
+        control.action = #selector(toggleAutoHide(_:))
+        return control
+    }()
     private lazy var refreshButton = NSButton(
         title: "刷新所有程序窗口",
         target: self,
@@ -49,7 +55,7 @@ final class ControlCenterViewController: NSViewController {
         self.appSettings = appSettings
         self.windowRefresher = windowRefresher
         super.init(nibName: nil, bundle: nil)
-        preferredContentSize = CGSize(width: 340, height: 420)
+        preferredContentSize = CGSize(width: 340, height: 470)
     }
 
     @available(*, unavailable)
@@ -75,6 +81,7 @@ final class ControlCenterViewController: NSViewController {
         contentStack.addArrangedSubview(makePermissionView())
         contentStack.addArrangedSubview(makeEnableRow())
         contentStack.addArrangedSubview(makeSizeSection())
+        contentStack.addArrangedSubview(makeAutoHideRow())
         contentStack.addArrangedSubview(makeRefreshSection())
         contentStack.addArrangedSubview(makeFooterView())
 
@@ -100,6 +107,7 @@ final class ControlCenterViewController: NSViewController {
         let isTrusted = permissionManager.isTrusted
         updatePermissionCard(isTrusted: isTrusted)
         enableSwitch.state = applicationState.areWindowButtonsEnabled && isTrusted ? .on : .off
+        autoHideSwitch.state = appSettings.automaticallyHidesControls ? .on : .off
 
         if let selectedIndex = AppSettings.ControlSize.allCases.firstIndex(
             of: appSettings.controlSize
@@ -219,6 +227,27 @@ final class ControlCenterViewController: NSViewController {
             sizeControl.widthAnchor.constraint(equalToConstant: 304)
         ])
         return stack
+    }
+
+    private func makeAutoHideRow() -> NSView {
+        let title = NSTextField(labelWithString: "自动隐藏，避免遮挡")
+        title.font = .systemFont(ofSize: 13, weight: .medium)
+        let detail = NSTextField(labelWithString: "移到窗口右侧蓝色提示条时展开")
+        detail.font = .systemFont(ofSize: 10)
+        detail.textColor = .secondaryLabelColor
+
+        let labels = NSStackView(views: [title, detail])
+        labels.orientation = .vertical
+        labels.alignment = .leading
+        labels.spacing = 2
+
+        let row = NSStackView(views: [labels, makeFlexibleSpacer(), autoHideSwitch])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 8
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.widthAnchor.constraint(equalToConstant: 304).isActive = true
+        return row
     }
 
     private func makeRefreshSection() -> NSView {
@@ -347,6 +376,13 @@ final class ControlCenterViewController: NSViewController {
         appSettings.setControlSize(sizes[sender.selectedSegment])
     }
 
+    @objc private func toggleAutoHide(_ sender: NSSwitch) {
+        appSettings.setAutomaticallyHidesControls(sender.state == .on)
+        refreshStatusLabel.stringValue = sender.state == .on
+            ? "控件已移到标题栏下方；移入右侧蓝色提示条即可展开。"
+            : "控件将常驻标题栏下方，可能覆盖少量窗口内容。"
+    }
+
     @objc private func refreshAllWindows() {
         guard permissionManager.isTrusted else {
             refreshStatusLabel.stringValue = "缺少辅助功能权限，授权后才能扫描窗口。"
@@ -369,7 +405,11 @@ final class ControlCenterViewController: NSViewController {
             refreshStatusLabel.stringValue = "没有找到可控制的普通应用窗口。"
         } else if let targetApplicationName = result.targetApplicationName,
                   result.areControlsVisible {
-            refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，三个控件已显示在 \(targetApplicationName) 右上角。"
+            if appSettings.automaticallyHidesControls {
+                refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，控件已在 \(targetApplicationName) 右侧短暂展开，之后移入蓝色提示条即可显示。"
+            } else {
+                refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，三个控件已显示在 \(targetApplicationName) 右侧。"
+            }
         } else {
             refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，请点击一个目标窗口。"
         }
