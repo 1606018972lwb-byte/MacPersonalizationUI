@@ -4,9 +4,9 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-版本 1.5 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
+版本 1.6 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
 
-- 使用 `NSStatusItem` 提供菜单栏入口，不显示 Dock 图标。
+- 作为普通前台应用运行，启动后同时显示程序坞图标和 `NSStatusItem` 菜单栏入口。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
 - 控制中心可以检查权限状态并跳转到系统设置的辅助功能页面。
 - 使用 `NSWorkspace` 和 `AXUIElement` 读取当前前台应用及焦点窗口。
@@ -21,7 +21,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 启动后在顶部菜单栏显示小图标，点击后打开原生 AppKit 控制中心。
 - 菜单栏图标使用系统模板渲染，在蓝色、深色和浅色菜单栏上保持高对比可见。
 - 右键菜单栏图标可以打开设置界面、重新启动软件或退出程序。
-- 首次启动自动显示控制中心；应用运行中再次双击也会重新打开并置前。
+- 首次双击启动自动显示主界面；应用运行中再次双击或点击程序坞图标也会重新打开并置前。
 - 控制中心可以暂停、启用、检查权限、调整大小或退出应用。
 - 缺少权限时右上角显示警告三角图标，控制中心显示橙色警告卡并主动弹出授权说明。
 - “按钮大小”提供小、标准、大三档，三个图标和控制条会立即同步缩放。
@@ -32,7 +32,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 打开 `dist/MacWindowButtons-1.5.dmg`。
+1. 打开 `dist/MacWindowButtons-1.6.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在控制中心点击“立即授权”。

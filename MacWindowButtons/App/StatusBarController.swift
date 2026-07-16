@@ -5,12 +5,17 @@ final class StatusBarController: NSObject {
     private let permissionManager: AccessibilityPermissionManager
     private let statusItem: NSStatusItem
     private let controlCenterViewController: ControlCenterViewController
-    private let controlCenterWindow: NSPanel
+    private let controlCenterWindow: NSWindow
     private lazy var contextMenu = makeContextMenu()
 
     private var permissionTimer: Timer?
     private var lastKnownPermissionState: Bool?
     private var hasPresentedMissingPermissionAlert = false
+
+    /// 供应用生命周期判断程序坞点击时是否需要恢复主界面。
+    var isControlCenterVisible: Bool {
+        controlCenterWindow.isVisible
+    }
 
     init(
         applicationState: ApplicationState,
@@ -26,7 +31,7 @@ final class StatusBarController: NSObject {
             appSettings: appSettings,
             windowRefresher: windowRefresher
         )
-        controlCenterWindow = NSPanel(
+        controlCenterWindow = NSWindow(
             contentRect: CGRect(origin: .zero, size: CGSize(width: 340, height: 420)),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
@@ -65,7 +70,8 @@ final class StatusBarController: NSObject {
         controlCenterWindow.isReleasedWhenClosed = false
         controlCenterWindow.hidesOnDeactivate = false
         controlCenterWindow.isMovableByWindowBackground = true
-        controlCenterWindow.level = .floating
+        // 主界面使用普通窗口层级，可在程序坞点击应用时按标准 macOS 行为置前。
+        controlCenterWindow.level = .normal
         controlCenterWindow.collectionBehavior = [.moveToActiveSpace]
         controlCenterWindow.contentViewController = controlCenterViewController
         controlCenterWindow.center()
@@ -164,6 +170,9 @@ final class StatusBarController: NSObject {
     /// 主动打开控制中心。应用首次启动和用户再次双击应用时都会调用。
     func showControlCenter() {
         dispatchPrecondition(condition: .onQueue(.main))
+        // 即使旧版偏好或启动环境曾把应用作为后台附件运行，也在打开主界面前
+        // 恢复普通前台策略，保证程序坞图标和窗口激活行为一致。
+        NSApp.setActivationPolicy(.regular)
         updateStatusButtonAppearance()
         controlCenterViewController.refreshInterface()
 
