@@ -1,36 +1,24 @@
-# MacPersonelUI
+# MacWindowButtons
 
-#### Description
-mac的ui太丑了，还是喜欢 win 的
+MacWindowButtons is a macOS window enhancement utility built with Swift, AppKit, and the Accessibility API. It will display an independent control strip at the top-right corner of another application's window instead of modifying the native red, yellow, and green controls.
 
-#### Software Architecture
-Software architecture description
+## Current delivery
 
-#### Installation
+This commit intentionally implements one feature only: the AppKit menu bar application foundation.
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+- A macOS 13+ Xcode application project.
+- An `NSStatusItem` with Enable, Pause, and Quit actions.
+- Mutually exclusive Enable and Pause state ready for future window services.
+- No Dock or Command-Tab entry, configured through `LSUIElement` and the accessory activation policy.
+- A Retina-ready SF Symbol with a text fallback.
 
-#### Instructions
+Accessibility permission handling, focused-window discovery, and the overlay panel will be delivered as separate commits.
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+## Build
 
-#### Contribution
+1. Install Xcode 14 or newer.
+2. Open `MacWindowButtons.xcodeproj`.
+3. Select your development team in Signing & Capabilities.
+4. Select My Mac and run the project.
 
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
-
-
-#### Gitee Feature
-
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+The project does not disable SIP, modify system files, or inject code into other processes. Accessibility permission will be required by later window-control features.
