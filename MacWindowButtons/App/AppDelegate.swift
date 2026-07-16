@@ -29,17 +29,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appSettings: appSettings
         )
 
-        statusBarController = StatusBarController(
+        let statusController = StatusBarController(
             applicationState: applicationState,
             permissionManager: permissionManager,
             appSettings: appSettings
         )
+        statusBarController = statusController
         overlayPanelController = overlayController
         overlayController.start()
+
+        // 状态栏项目需要一个短暂布局周期；随后主动展示控制中心，避免双击应用后无反馈。
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            statusController.showControlCenter()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         overlayPanelController?.stop()
+    }
+
+    /// 应用已经运行时再次从 Finder 双击，重新打开控制中心而不是静默忽略。
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        statusBarController?.showControlCenter()
+        return true
     }
 
     /// 最后一个普通窗口关闭时仍保持菜单栏应用运行。

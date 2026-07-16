@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-版本 1.3 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
+版本 1.3.1 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
 
 - 使用 `NSStatusItem` 提供菜单栏入口，不显示 Dock 图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -19,15 +19,16 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 支持多显示器坐标转换、Retina、浅色和深色模式。
 - 不支持某项 AX 操作时，对应按钮自动禁用。
 - 启动后在顶部菜单栏显示小图标，点击后打开原生 AppKit 控制中心。
+- 首次启动自动显示控制中心；应用运行中再次双击也会重新打开并置前。
 - 控制中心可以暂停、启用、检查权限、调整大小或退出应用。
-- 缺少权限时显示橙色警告卡；点击“立即授权”或尝试启用时才弹出权限说明。
+- 缺少权限时右上角显示橙色警告图标，控制中心显示警告卡并主动弹出授权说明。
 - “按钮大小”提供小、标准、大三档，三个图标和控制条会立即同步缩放。
 - 按钮大小使用 `UserDefaults` 保存，退出或重启后仍保留选择。
 - 使用原创深蓝窗口图标，并生成完整的 Retina `AppIcon.icns` 资源。
 
 ## 安装与授权
 
-1. 打开 `dist/MacWindowButtons-1.3.dmg`。
+1. 打开 `dist/MacWindowButtons-1.3.1.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在控制中心点击“立即授权”。
@@ -43,7 +44,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 核心逻辑使用 AppKit：
 
 1. `AppDelegate` 负责应用生命周期和顶层依赖组装。
-2. `StatusBarController` 负责菜单栏小图标和 `NSPopover` 的打开、关闭。
+2. `StatusBarController` 负责菜单栏小图标、权限警告外观和控制中心窗口。
 3. `AccessibilityPermissionManager` 负责权限请求、状态提示和系统设置跳转。
 4. `AccessibilityWindowManager` 读取前台应用的 `AXFocusedWindow` 及窗口能力。
 5. `OverlayPanelController` 使用非激活 `NSPanel` 定位控制条，不抢目标窗口键盘焦点。
