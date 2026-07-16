@@ -1,6 +1,7 @@
 # Xcode 用户级配置和本地构建产物不应进入版本库。
 DerivedData/
 build/
+dist/
 *.xcuserstate
 xcuserdata/
 

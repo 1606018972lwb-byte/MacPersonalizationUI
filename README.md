@@ -1,29 +1,47 @@
 # MacWindowButtons
 
-MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 macOS 窗口增强工具。它计划在其他应用窗口右上角展示独立的 Windows 风格控制条，用于最小化、最大化或还原、关闭窗口。
+MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 macOS 窗口增强工具。它不会修改其他应用的原生标题栏，而是在当前焦点窗口右上角叠加独立的 Windows 风格控制条。
 
 ## 当前已完成功能
 
-本次提交只完成第一个独立功能：**macOS 菜单栏应用基础结构**。
+版本 1.1 已完成可操作的右侧窗口控制条：
 
-- 创建标准 AppKit Xcode 工程，最低支持 macOS 13.0。
-- 使用 `NSStatusItem` 创建菜单栏入口。
-- 提供“启用窗口按钮”“暂停窗口按钮”和“退出”菜单操作。
-- 启用与暂停操作具有互斥状态，后续窗口服务可以通过状态回调接入。
-- 通过 `LSUIElement` 和 `.accessory` 激活策略隐藏 Dock 图标及 Command + Tab 项目。
-- 使用 SF Symbol 显示 Retina 菜单栏图标，并提供符号加载失败时的文本降级方案。
+- 使用 `NSStatusItem` 提供菜单栏入口，不显示 Dock 图标。
+- 首次启动通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
+- 菜单中可以检查权限状态并跳转到系统设置的辅助功能页面。
+- 使用 `NSWorkspace` 和 `AXUIElement` 读取当前前台应用及焦点窗口。
+- 在焦点窗口右上角显示不抢键盘焦点的半透明 `NSPanel`。
+- 按钮从左到右依次为最小化、最大化/还原、关闭。
+- 最小化通过写入 `AXMinimized` 实现。
+- 关闭通过目标窗口自己的 `AXCloseButton` 执行 `AXPress`，不会强制退出应用。
+- 最大化使用窗口所在屏幕的 `visibleFrame`，不会进入 macOS 原生全屏空间；再次点击恢复原始尺寸。
+- 使用 200ms 低频定时器跟随窗口移动、缩放、切换和关闭。
+- 支持多显示器坐标转换、Retina、浅色和深色模式。
+- 不支持某项 AX 操作时，对应按钮自动禁用。
 
-辅助功能权限检查、焦点窗口读取和悬浮控制条尚未在本次提交中实现，它们会作为后续独立功能分别提交。
+## 安装与授权
+
+1. 打开 `dist/MacWindowButtons-1.1.dmg`。
+2. 将 `MacWindowButtons.app` 拖入 `Applications`。
+3. 首次打开未公证测试包时，请右键应用并选择“打开”。
+4. 在弹出的说明中点击“打开系统设置”。
+5. 前往“系统设置 → 隐私与安全性 → 辅助功能”，开启 MacWindowButtons。
+6. 如果列表中已经存在旧版本，请先关闭再重新开启开关；必要时删除旧项目后重新添加 `/Applications/MacWindowButtons.app`。
+7. 返回微信并点击微信窗口，右上角应出现三个控制按钮。
+
+授权后无需反复重启；应用每 200ms 低频检查一次权限和焦点窗口。若按钮仍未出现，可从菜单栏图标选择“检查辅助功能权限”。
 
 ## 技术方案
 
-核心逻辑使用 AppKit，不把窗口控制能力放入 SwiftUI：
+核心逻辑使用 AppKit：
 
-1. `AppDelegate` 只负责应用生命周期和顶层对象组装。
-2. `StatusBarController` 负责 `NSStatusItem`、菜单展示和用户操作转发。
-3. `ApplicationState` 保存功能启用状态，通过回调与后续窗口服务解耦。
-4. 后续使用 `AXUIElement` 获取前台应用焦点窗口，并使用 `AXObserver` 监听窗口变化。
-5. 后续使用不抢焦点的透明 `NSPanel` 展示独立悬浮按钮。
+1. `AppDelegate` 负责应用生命周期和顶层依赖组装。
+2. `StatusBarController` 负责菜单栏、启用/暂停和权限检查入口。
+3. `AccessibilityPermissionManager` 负责权限请求、状态提示和系统设置跳转。
+4. `AccessibilityWindowManager` 读取前台应用的 `AXFocusedWindow` 及窗口能力。
+5. `OverlayPanelController` 使用非激活 `NSPanel` 定位控制条，不抢目标窗口键盘焦点。
+6. `WindowActionService` 执行窗口动作，`WindowStateStore` 为每个窗口保存还原尺寸。
+7. `ScreenCoordinateConverter` 统一 Accessibility 与 AppKit 坐标系。
 
 ## 项目目录
 
@@ -33,23 +51,33 @@ MacWindowButtons/
 │   ├── AppDelegate.swift
 │   ├── StatusBarController.swift
 │   └── ApplicationState.swift
-Config/
-└── Info.plist
-MacWindowButtons.xcodeproj/
-└── project.pbxproj
+├── Accessibility/
+│   ├── AccessibilityPermissionManager.swift
+│   ├── AccessibilityWindowManager.swift
+│   └── AXElementExtensions.swift
+├── WindowControl/
+│   ├── TargetWindow.swift
+│   ├── WindowActionService.swift
+│   ├── WindowStateStore.swift
+│   └── ScreenCoordinateConverter.swift
+└── Overlay/
+    ├── OverlayPanelController.swift
+    ├── WindowButtonsView.swift
+    └── WindowControlButton.swift
 ```
 
-后续代码将按需求逐步加入 `Accessibility`、`WindowControl`、`Overlay`、`Settings`、`Hotkeys`、`Services`、`Utilities` 和 `Tests` 目录，不提前创建空文件。
-
-## 第一阶段计划
+## 开发进度
 
 - [x] 创建 Xcode 项目与菜单栏程序。
-- [ ] 实现辅助功能权限检查及拒绝授权处理。
-- [ ] 获取当前前台应用。
-- [ ] 获取当前焦点窗口及基础属性。
-- [ ] 完成第一阶段整体编译和手动验证。
-
-每个复选项作为一个独立功能提交，避免把所有功能放在一次提交中。
+- [x] 实现辅助功能权限检查及拒绝授权处理。
+- [x] 获取当前前台应用和焦点窗口基础属性。
+- [x] 创建右上角悬浮控制条。
+- [x] 实现最小化、最大化/还原和关闭。
+- [x] 实现基础多显示器坐标转换。
+- [ ] 使用 `AXObserver` 替换主要轮询并保留低频兼容轮询。
+- [ ] 增加应用排除列表和设置页面。
+- [ ] 增加全局快捷键和开机启动。
+- [ ] 增加自动化测试、兼容性测试和正式签名公证。
 
 ## Xcode 项目配置
 
@@ -59,19 +87,9 @@ MacWindowButtons.xcodeproj/
 - UI 框架：AppKit
 - 生命周期：`NSApplicationDelegate`
 - Bundle Identifier：`com.lwb.MacWindowButtons`
-- Info.plist：手动维护 `Config/Info.plist`
 - `Application is agent (UIElement)`：启用
-- 签名：Automatic；首次运行前请在 Xcode 的 Signing & Capabilities 中选择自己的 Team
 
-## 编译运行
-
-1. 安装 Xcode 14 或更高版本，并执行 `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`。
-2. 使用 Xcode 打开 `MacWindowButtons.xcodeproj`。
-3. 在 Target 的 Signing & Capabilities 中选择开发团队。
-4. 选择 `My Mac`，执行 Product → Run。
-5. 应用启动后不会显示 Dock 图标；请在顶部菜单栏找到窗口图标。
-
-命令行验证：
+命令行构建：
 
 ```bash
 xcodebuild -project MacWindowButtons.xcodeproj \
@@ -82,9 +100,11 @@ xcodebuild -project MacWindowButtons.xcodeproj \
 
 ## 重要限制
 
-- 本程序不会真正移动 macOS 原生红黄绿按钮，而是在窗口右上角显示独立悬浮控制按钮。
-- 部分应用可能限制 Accessibility 操作。
-- 原生全屏应用中可能无法显示悬浮按钮。
-- 开启辅助功能权限后才能控制其他应用窗口。
+- macOS 不允许普通应用稳定移动微信等程序的原生红黄绿按钮；左侧原生按钮仍会保留。
+- 本程序是在窗口右上角显示独立悬浮控制按钮，不会修改其他应用代码。
+- 部分应用可能限制 Accessibility 属性或操作，对应按钮会被禁用。
+- 原生全屏窗口中会隐藏悬浮按钮。
+- 开启辅助功能权限后才能读取和控制其他应用窗口。
 - 本项目不关闭 SIP、不修改系统文件、不进行进程注入。
+- 当前测试 DMG 使用本机临时签名，尚未进行 Developer ID 签名和 Apple 公证。
 - 本项目不能保证兼容所有 macOS 应用。

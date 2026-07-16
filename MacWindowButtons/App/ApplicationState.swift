@@ -2,8 +2,7 @@ import Foundation
 
 /// 描述悬浮窗口按钮功能当前是否工作。
 ///
-/// 首个迭代只负责保存菜单状态；后续接入窗口监听服务后，服务应订阅
-/// `onWindowButtonsEnabledChange`，而不是让菜单控制器直接依赖窗口实现。
+/// 状态由菜单修改，悬浮面板读取该值决定显示或隐藏，避免 UI 组件互相依赖。
 final class ApplicationState {
     /// 窗口按钮状态改变时由上层注入的回调。
     var onWindowButtonsEnabledChange: ((Bool) -> Void)?

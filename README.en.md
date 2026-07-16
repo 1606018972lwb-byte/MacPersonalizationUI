@@ -1,24 +1,16 @@
 # MacWindowButtons
 
-MacWindowButtons is a macOS window enhancement utility built with Swift, AppKit, and the Accessibility API. It will display an independent control strip at the top-right corner of another application's window instead of modifying the native red, yellow, and green controls.
+MacWindowButtons is a Swift and AppKit menu bar utility that adds an independent Windows-style control strip to the top-right corner of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-## Current delivery
+Version 1.1 includes:
 
-This commit intentionally implements one feature only: the AppKit menu bar application foundation.
+- Accessibility permission prompting and a System Settings shortcut.
+- Focused-window discovery through `AXUIElement`.
+- A non-activating translucent `NSPanel` that follows the focused window.
+- Minimize, maximize/restore, and close actions.
+- Per-window restore frames and multi-display coordinate conversion.
+- A 200ms compatibility polling interval with low timer tolerance.
 
-- A macOS 13+ Xcode application project.
-- An `NSStatusItem` with Enable, Pause, and Quit actions.
-- Mutually exclusive Enable and Pause state ready for future window services.
-- No Dock or Command-Tab entry, configured through `LSUIElement` and the accessory activation policy.
-- A Retina-ready SF Symbol with a text fallback.
+To test, install `dist/MacWindowButtons-1.1.dmg`, enable MacWindowButtons in System Settings → Privacy & Security → Accessibility, then focus a standard application window.
 
-Accessibility permission handling, focused-window discovery, and the overlay panel will be delivered as separate commits.
-
-## Build
-
-1. Install Xcode 14 or newer.
-2. Open `MacWindowButtons.xcodeproj`.
-3. Select your development team in Signing & Capabilities.
-4. Select My Mac and run the project.
-
-The project does not disable SIP, modify system files, or inject code into other processes. Accessibility permission will be required by later window-control features.
+The test DMG is ad-hoc signed and not notarized. The project does not disable SIP, modify system files, or inject code into other processes.

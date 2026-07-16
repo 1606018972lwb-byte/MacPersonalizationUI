@@ -6,6 +6,7 @@ import AppKit
 /// 便于后续分别测试菜单、权限和窗口控制模块。
 final class StatusBarController: NSObject {
     private let applicationState: ApplicationState
+    private let permissionManager: AccessibilityPermissionManager
     private let statusItem: NSStatusItem
 
     private lazy var enableItem = NSMenuItem(
@@ -20,9 +21,15 @@ final class StatusBarController: NSObject {
     )
 
     /// 创建状态栏图标和菜单。
-    /// - Parameter applicationState: 跨模块共享的应用运行状态。
-    init(applicationState: ApplicationState) {
+    /// - Parameters:
+    ///   - applicationState: 跨模块共享的应用运行状态。
+    ///   - permissionManager: 辅助功能权限检查与设置跳转服务。
+    init(
+        applicationState: ApplicationState,
+        permissionManager: AccessibilityPermissionManager
+    ) {
         self.applicationState = applicationState
+        self.permissionManager = permissionManager
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         super.init()
 
@@ -69,6 +76,15 @@ final class StatusBarController: NSObject {
         menu.addItem(pauseItem)
         menu.addItem(.separator())
 
+        let permissionItem = NSMenuItem(
+            title: "检查辅助功能权限",
+            action: #selector(checkAccessibilityPermission),
+            keyEquivalent: ""
+        )
+        permissionItem.target = self
+        menu.addItem(permissionItem)
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(
             title: "退出 MacWindowButtons",
             action: #selector(quitApplication),
@@ -88,6 +104,11 @@ final class StatusBarController: NSObject {
     /// 响应“暂停窗口按钮”菜单项。
     @objc private func pauseWindowButtons() {
         applicationState.pauseWindowButtons()
+    }
+
+    /// 显示权限状态；未授权时可直接进入对应的系统设置页面。
+    @objc private func checkAccessibilityPermission() {
+        permissionManager.showPermissionStatus()
     }
 
     /// 安全结束应用，由 AppKit 执行完整的终止生命周期。
