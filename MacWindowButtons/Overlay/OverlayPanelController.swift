@@ -1,5 +1,17 @@
 import AppKit
 
+/// 手动刷新全部运行中应用窗口后的结果。
+struct WindowRefreshResult {
+    let discoveredWindowCount: Int
+    let targetApplicationName: String?
+    let areControlsVisible: Bool
+}
+
+/// 主界面通过该协议请求刷新，无需了解悬浮面板内部实现。
+protocol WindowOverlayRefreshing: AnyObject {
+    func refreshAllWindows() -> WindowRefreshResult
+}
+
 /// 永远不成为主窗口或键盘焦点的悬浮面板。
 private final class OverlayPanel: NSPanel {
     override var canBecomeKey: Bool { false }
@@ -7,7 +19,7 @@ private final class OverlayPanel: NSPanel {
 }
 
 /// 轮询焦点窗口、定位悬浮面板并转发三个窗口控制动作。
-final class OverlayPanelController: NSObject {
+final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private enum Layout {
         static let rightInset: CGFloat = 8
         static let topInset: CGFloat = 5
@@ -23,6 +35,7 @@ final class OverlayPanelController: NSObject {
 
     private var refreshTimer: Timer?
     private var currentWindow: TargetWindow?
+    private var lastExternalWindow: TargetWindow?
     private var settingsObserverIdentifier: UUID?
 
     init(
@@ -87,6 +100,32 @@ final class OverlayPanelController: NSObject {
         panel.orderOut(nil)
     }
 
+    /// 扫描全部普通应用窗口，并立即为最近的外部目标窗口显示三个控件。
+    func refreshAllWindows() -> WindowRefreshResult {
+        dispatchPrecondition(condition: .onQueue(.main))
+        applicationState.enableWindowButtons()
+
+        let discoveredWindows = windowManager.allControllableWindows()
+        let preferredWindow = lastExternalWindow.flatMap { previousWindow in
+            discoveredWindows.first { window in
+                window.identifier == previousWindow.identifier
+            }
+        } ?? discoveredWindows.first
+
+        if let preferredWindow {
+            displayOverlay(for: preferredWindow)
+        } else {
+            currentWindow = nil
+            panel.orderOut(nil)
+        }
+
+        return WindowRefreshResult(
+            discoveredWindowCount: discoveredWindows.count,
+            targetApplicationName: preferredWindow?.applicationName,
+            areControlsVisible: preferredWindow != nil && panel.isVisible
+        )
+    }
+
     private func configurePanel() {
         panel.contentView = buttonsView
         panel.backgroundColor = .clear
@@ -112,17 +151,39 @@ final class OverlayPanelController: NSObject {
     private func refreshOverlay() {
         dispatchPrecondition(condition: .onQueue(.main))
         guard applicationState.areWindowButtonsEnabled,
-              permissionManager.isTrusted,
-              let targetWindow = windowManager.focusedWindow(),
-              let appKitFrame = ScreenCoordinateConverter.appKitRect(
-                fromAccessibilityRect: targetWindow.frame
-              ) else {
+              permissionManager.isTrusted else {
+            currentWindow = nil
+            panel.orderOut(nil)
+            return
+        }
+
+        guard let targetWindow = windowManager.focusedWindow() else {
+            // 控制中心成为前台时继续展示最近的外部窗口，避免手动刷新结果被定时器立刻隐藏。
+            if NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+                == Bundle.main.bundleIdentifier,
+               let lastExternalWindow {
+                displayOverlay(for: lastExternalWindow)
+                return
+            }
+            currentWindow = nil
+            panel.orderOut(nil)
+            return
+        }
+
+        displayOverlay(for: targetWindow)
+    }
+
+    private func displayOverlay(for targetWindow: TargetWindow) {
+        guard let appKitFrame = ScreenCoordinateConverter.appKitRect(
+            fromAccessibilityRect: targetWindow.frame
+        ) else {
             currentWindow = nil
             panel.orderOut(nil)
             return
         }
 
         currentWindow = targetWindow
+        lastExternalWindow = targetWindow
         buttonsView.updateCapabilities(
             for: targetWindow,
             showsRestore: actionService.isMaximizedByThisApp(targetWindow)

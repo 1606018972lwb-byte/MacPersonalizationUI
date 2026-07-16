@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that adds an independent Windows-style control strip to the top-right corner of the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Version 1.4 includes:
+Version 1.5 includes:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - Focused-window discovery through `AXUIElement`.
@@ -18,7 +18,9 @@ Version 1.4 includes:
 - A control-center window that opens on launch and reopens when the running app is double-clicked.
 - A high-contrast template menu bar icon and an immediate authorization alert when permission is missing.
 - A right-click menu for opening settings, restarting the app, or quitting.
+- A main-window refresh action that scans all controllable windows and reports the count.
+- Immediate display of the minimize, maximize/restore, and close controls on the most recent target window after a refresh.
 
-To test, install `dist/MacWindowButtons-1.4.dmg`. The control center opens automatically and reports missing Accessibility permission. Enable MacWindowButtons in System Settings → Privacy & Security → Accessibility. Right-click the menu bar icon to open settings, restart, or quit.
+To test, install `dist/MacWindowButtons-1.5.dmg`. The control center opens automatically and reports missing Accessibility permission. Enable MacWindowButtons in System Settings → Privacy & Security → Accessibility. Click “Refresh All Application Windows” to rescan windows and show the three controls, or right-click the menu bar icon to open settings, restart, or quit.
 
 The test DMG is ad-hoc signed and not notarized. The project does not disable SIP, modify system files, or inject code into other processes.

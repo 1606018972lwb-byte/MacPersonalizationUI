@@ -20,9 +20,7 @@ final class AccessibilityWindowManager {
     func focusedWindow() -> TargetWindow? {
         guard permissionManager.isTrusted,
               let application = NSWorkspace.shared.frontmostApplication,
-              application.processIdentifier != ProcessInfo.processInfo.processIdentifier,
-              application.bundleIdentifier != Bundle.main.bundleIdentifier,
-              !excludedBundleIdentifiers.contains(application.bundleIdentifier ?? "") else {
+              isEligible(application) else {
             return nil
         }
 
@@ -34,6 +32,43 @@ final class AccessibilityWindowManager {
 
         // Core Foundation 不提供可选转换；前面的 CFTypeID 校验保证该转换安全。
         let window = rawWindow as! AXUIElement
+        return makeTargetWindow(from: window, application: application)
+    }
+
+    /// 扫描所有正在运行的普通应用，返回当前可控制的非最小化标准窗口。
+    func allControllableWindows() -> [TargetWindow] {
+        guard permissionManager.isTrusted else {
+            return []
+        }
+
+        return NSWorkspace.shared.runningApplications
+            .filter(isEligible)
+            .flatMap { application -> [TargetWindow] in
+                let applicationElement = AXUIElementCreateApplication(
+                    application.processIdentifier
+                )
+                guard let rawWindows = applicationElement.copyAttribute(kAXWindowsAttribute),
+                      let windows = rawWindows as? [AXUIElement] else {
+                    return []
+                }
+                return windows.compactMap { window in
+                    makeTargetWindow(from: window, application: application)
+                }
+            }
+    }
+
+    private func isEligible(_ application: NSRunningApplication) -> Bool {
+        application.activationPolicy == .regular
+            && application.processIdentifier != ProcessInfo.processInfo.processIdentifier
+            && application.bundleIdentifier != Bundle.main.bundleIdentifier
+            && !excludedBundleIdentifiers.contains(application.bundleIdentifier ?? "")
+            && !application.isTerminated
+    }
+
+    private func makeTargetWindow(
+        from window: AXUIElement,
+        application: NSRunningApplication
+    ) -> TargetWindow? {
         guard window.stringAttribute(kAXRoleAttribute) == kAXWindowRole as String,
               let position = window.pointAttribute(kAXPositionAttribute),
               let size = window.sizeAttribute(kAXSizeAttribute),

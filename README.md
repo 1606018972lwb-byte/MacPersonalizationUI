@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-版本 1.4 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
+版本 1.5 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
 
 - 使用 `NSStatusItem` 提供菜单栏入口，不显示 Dock 图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -25,12 +25,14 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 控制中心可以暂停、启用、检查权限、调整大小或退出应用。
 - 缺少权限时右上角显示警告三角图标，控制中心显示橙色警告卡并主动弹出授权说明。
 - “按钮大小”提供小、标准、大三档，三个图标和控制条会立即同步缩放。
+- 主界面提供“刷新所有程序窗口”，扫描所有运行中的普通应用窗口并显示扫描数量。
+- 刷新后会立即在最近使用的目标窗口右上角显示最小化、最大化/还原、关闭三个控件。
 - 按钮大小使用 `UserDefaults` 保存，退出或重启后仍保留选择。
 - 使用原创深蓝窗口图标，并生成完整的 Retina `AppIcon.icns` 资源。
 
 ## 安装与授权
 
-1. 打开 `dist/MacWindowButtons-1.4.dmg`。
+1. 打开 `dist/MacWindowButtons-1.5.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在控制中心点击“立即授权”。
@@ -39,6 +41,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 7. 返回微信并点击微信窗口，右上角应出现三个控制按钮。
 8. 如需调整图标大小，在控制中心选择“小 / 标准 / 大”。
 9. 右键顶部菜单栏图标，可以打开设置、重新启动或退出程序。
+10. 如需重新发现窗口，打开主界面并点击“刷新所有程序窗口”。
 
 授权后无需反复重启；应用每 200ms 低频检查一次权限和焦点窗口。若按钮仍未出现，点击菜单栏小图标查看控制中心的权限状态。
 
@@ -49,12 +52,12 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 1. `AppDelegate` 负责应用生命周期和顶层依赖组装。
 2. `StatusBarController` 负责菜单栏小图标、权限警告外观和控制中心窗口。
 3. `AccessibilityPermissionManager` 负责权限请求、状态提示和系统设置跳转。
-4. `AccessibilityWindowManager` 读取前台应用的 `AXFocusedWindow` 及窗口能力。
-5. `OverlayPanelController` 使用非激活 `NSPanel` 定位控制条，不抢目标窗口键盘焦点。
+4. `AccessibilityWindowManager` 读取前台应用的 `AXFocusedWindow`，也可扫描所有运行中普通应用的窗口及能力。
+5. `OverlayPanelController` 使用非激活 `NSPanel` 定位控制条，并处理主界面触发的全窗口刷新，不抢目标窗口键盘焦点。
 6. `WindowActionService` 执行窗口动作，`WindowStateStore` 为每个窗口保存还原尺寸。
 7. `ScreenCoordinateConverter` 统一 Accessibility 与 AppKit 坐标系。
 8. `AppSettings` 使用 `UserDefaults` 保存大小并通知菜单和悬浮面板刷新。
-9. `ControlCenterViewController` 使用纯 AppKit 构建权限、开关、大小和退出界面。
+9. `ControlCenterViewController` 使用纯 AppKit 构建权限、开关、大小、全窗口刷新和退出界面。
 
 ## 项目目录
 
@@ -96,6 +99,7 @@ MacWindowButtons/
 - [x] 实现基础多显示器坐标转换。
 - [x] 增加菜单栏按钮大小设置与持久化。
 - [x] 增加菜单栏控制中心、点击授权提示和原创应用图标。
+- [x] 增加主界面全窗口刷新、扫描结果提示和三控件立即显示。
 - [ ] 使用 `AXObserver` 替换主要轮询并保留低频兼容轮询。
 - [ ] 增加应用排除列表和完整设置页面。
 - [ ] 增加全局快捷键和开机启动。

@@ -8,6 +8,7 @@ final class ControlCenterViewController: NSViewController {
     private let applicationState: ApplicationState
     private let permissionManager: AccessibilityPermissionManager
     private let appSettings: AppSettings
+    private weak var windowRefresher: WindowOverlayRefreshing?
 
     private let permissionBox = NSBox()
     private let permissionIcon = NSImageView()
@@ -30,17 +31,25 @@ final class ControlCenterViewController: NSViewController {
         target: self,
         action: #selector(changeControlSize(_:))
     )
+    private lazy var refreshButton = NSButton(
+        title: "刷新所有程序窗口",
+        target: self,
+        action: #selector(refreshAllWindows)
+    )
+    private let refreshStatusLabel = NSTextField(wrappingLabelWithString: "扫描运行中的应用，并在目标窗口右上角显示三个控件。")
 
     init(
         applicationState: ApplicationState,
         permissionManager: AccessibilityPermissionManager,
-        appSettings: AppSettings
+        appSettings: AppSettings,
+        windowRefresher: WindowOverlayRefreshing
     ) {
         self.applicationState = applicationState
         self.permissionManager = permissionManager
         self.appSettings = appSettings
+        self.windowRefresher = windowRefresher
         super.init(nibName: nil, bundle: nil)
-        preferredContentSize = CGSize(width: 340, height: 330)
+        preferredContentSize = CGSize(width: 340, height: 420)
     }
 
     @available(*, unavailable)
@@ -66,6 +75,7 @@ final class ControlCenterViewController: NSViewController {
         contentStack.addArrangedSubview(makePermissionView())
         contentStack.addArrangedSubview(makeEnableRow())
         contentStack.addArrangedSubview(makeSizeSection())
+        contentStack.addArrangedSubview(makeRefreshSection())
         contentStack.addArrangedSubview(makeFooterView())
 
         NSLayoutConstraint.activate([
@@ -200,6 +210,31 @@ final class ControlCenterViewController: NSViewController {
         return stack
     }
 
+    private func makeRefreshSection() -> NSView {
+        refreshButton.bezelStyle = .rounded
+        refreshButton.image = NSImage(
+            systemSymbolName: "arrow.clockwise",
+            accessibilityDescription: "刷新所有程序窗口"
+        )
+        refreshButton.imagePosition = .imageLeading
+        refreshButton.translatesAutoresizingMaskIntoConstraints = false
+
+        refreshStatusLabel.font = .systemFont(ofSize: 10)
+        refreshStatusLabel.textColor = .secondaryLabelColor
+        refreshStatusLabel.maximumNumberOfLines = 2
+
+        let stack = NSStackView(views: [refreshButton, refreshStatusLabel])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.widthAnchor.constraint(equalToConstant: 304),
+            refreshButton.widthAnchor.constraint(equalToConstant: 304)
+        ])
+        return stack
+    }
+
     private func makeFooterView() -> NSView {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
             as? String ?? "-"
@@ -283,6 +318,32 @@ final class ControlCenterViewController: NSViewController {
             return
         }
         appSettings.setControlSize(sizes[sender.selectedSegment])
+    }
+
+    @objc private func refreshAllWindows() {
+        guard permissionManager.isTrusted else {
+            refreshStatusLabel.stringValue = "缺少辅助功能权限，授权后才能扫描窗口。"
+            permissionManager.requestPermissionFromUser()
+            refreshInterface()
+            return
+        }
+
+        guard let windowRefresher else {
+            refreshStatusLabel.stringValue = "窗口刷新服务当前不可用。"
+            NSLog("[MacWindowButtons] 窗口刷新服务已失效")
+            return
+        }
+
+        let result = windowRefresher.refreshAllWindows()
+        enableSwitch.state = .on
+        if result.discoveredWindowCount == 0 {
+            refreshStatusLabel.stringValue = "没有找到可控制的普通应用窗口。"
+        } else if let targetApplicationName = result.targetApplicationName,
+                  result.areControlsVisible {
+            refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，三个控件已显示在 \(targetApplicationName) 右上角。"
+        } else {
+            refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，请点击一个目标窗口。"
+        }
     }
 
     @objc private func quitApplication() {

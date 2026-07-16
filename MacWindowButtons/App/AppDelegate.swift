@@ -32,7 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let statusController = StatusBarController(
             applicationState: applicationState,
             permissionManager: permissionManager,
-            appSettings: appSettings
+            appSettings: appSettings,
+            windowRefresher: overlayController
         )
         statusBarController = statusController
         overlayPanelController = overlayController

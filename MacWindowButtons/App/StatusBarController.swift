@@ -15,17 +15,19 @@ final class StatusBarController: NSObject {
     init(
         applicationState: ApplicationState,
         permissionManager: AccessibilityPermissionManager,
-        appSettings: AppSettings
+        appSettings: AppSettings,
+        windowRefresher: WindowOverlayRefreshing
     ) {
         self.permissionManager = permissionManager
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         controlCenterViewController = ControlCenterViewController(
             applicationState: applicationState,
             permissionManager: permissionManager,
-            appSettings: appSettings
+            appSettings: appSettings,
+            windowRefresher: windowRefresher
         )
         controlCenterWindow = NSPanel(
-            contentRect: CGRect(origin: .zero, size: CGSize(width: 340, height: 330)),
+            contentRect: CGRect(origin: .zero, size: CGSize(width: 340, height: 420)),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
