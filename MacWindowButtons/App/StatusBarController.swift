@@ -138,28 +138,23 @@ final class StatusBarController: NSObject {
         showControlCenter()
     }
 
-    /// 创建同一安装位置的新实例；确认启动成功后再退出当前实例。
+    /// 先启动一个短生命周期的系统助手，当前进程退出并释放单实例锁后再打开应用。
     @objc private func restartApplication() {
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        configuration.createsNewApplicationInstance = true
+        let helper = Process()
+        helper.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // 应用路径作为独立参数传入，固定脚本只引用 $1，避免路径中的空格被错误拆分。
+        helper.arguments = [
+            "-c",
+            "sleep 0.6; /usr/bin/open \"$1\"",
+            "MacWindowButtons-RestartHelper",
+            Bundle.main.bundlePath
+        ]
 
-        NSWorkspace.shared.openApplication(
-            at: Bundle.main.bundleURL,
-            configuration: configuration
-        ) { [weak self] application, error in
-            DispatchQueue.main.async {
-                if let error {
-                    self?.showRestartError(error)
-                    return
-                }
-
-                guard application != nil else {
-                    self?.showRestartErrorMessage("系统没有返回新的应用实例。")
-                    return
-                }
-                NSApp.terminate(nil)
-            }
+        do {
+            try helper.run()
+            NSApp.terminate(nil)
+        } catch {
+            showRestartError(error)
         }
     }
 

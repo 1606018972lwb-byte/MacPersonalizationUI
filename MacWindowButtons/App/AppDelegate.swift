@@ -1,4 +1,64 @@
 import AppKit
+import Darwin
+
+/// 使用用户临时目录中的 POSIX 文件锁保证整个登录会话只有一个应用进程。
+///
+/// 文件描述符在主进程整个生命周期内保持打开；即使应用崩溃或被强制结束，macOS 也会
+/// 自动释放锁，不会留下阻止下次启动的“死锁文件”。第二个进程只负责唤醒已有实例。
+private final class SingleInstanceCoordinator {
+    static let showMainWindowNotification = Notification.Name(
+        "com.lwb.MacWindowButtons.showMainWindow"
+    )
+
+    private var lockFileDescriptor: Int32 = -1
+
+    func acquireLock() -> Bool {
+        let lockURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("com.lwb.MacWindowButtons.instance.lock")
+        lockFileDescriptor = Darwin.open(
+            lockURL.path,
+            O_CREAT | O_RDWR,
+            S_IRUSR | S_IWUSR
+        )
+        guard lockFileDescriptor >= 0 else {
+            NSLog("[MacWindowButtons] 无法创建单实例锁：%@", lockURL.path)
+            return false
+        }
+
+        guard Darwin.lockf(lockFileDescriptor, F_TLOCK, 0) == 0 else {
+            Darwin.close(lockFileDescriptor)
+            lockFileDescriptor = -1
+            return false
+        }
+        return true
+    }
+
+    /// 通知已经运行的进程显示主界面，并将它切换到前台。
+    func activateRunningInstance() {
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDistributedCenter(),
+            CFNotificationName(Self.showMainWindowNotification.rawValue as CFString),
+            nil,
+            nil,
+            true
+        )
+
+        let currentPID = ProcessInfo.processInfo.processIdentifier
+        NSRunningApplication.runningApplications(
+            withBundleIdentifier: "com.lwb.MacWindowButtons"
+        )
+        .first { $0.processIdentifier != currentPID && !$0.isTerminated }?
+        .activate(options: [.activateAllWindows])
+    }
+
+    deinit {
+        guard lockFileDescriptor >= 0 else {
+            return
+        }
+        _ = Darwin.lockf(lockFileDescriptor, F_ULOCK, 0)
+        Darwin.close(lockFileDescriptor)
+    }
+}
 
 /// 应用生命周期入口。
 ///
@@ -6,11 +66,17 @@ import AppKit
 /// 功能开关状态由 `ApplicationState` 负责，避免把后续窗口控制逻辑堆积在入口中。
 @main
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let singleInstanceCoordinator: SingleInstanceCoordinator
     private let applicationState = ApplicationState()
     private let permissionManager = AccessibilityPermissionManager()
     private let appSettings = AppSettings()
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
+
+    private init(singleInstanceCoordinator: SingleInstanceCoordinator) {
+        self.singleInstanceCoordinator = singleInstanceCoordinator
+        super.init()
+    }
 
     /// 无 Storyboard 项目的显式启动入口。
     ///
@@ -18,8 +84,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 界面，因此必须在进入事件循环前自行创建代理并赋给 NSApplication；否则应用虽会
     /// 出现在程序坞，但 applicationDidFinishLaunching 不会执行，也就不会创建主窗口。
     static func main() {
+        let singleInstanceCoordinator = SingleInstanceCoordinator()
+        guard singleInstanceCoordinator.acquireLock() else {
+            singleInstanceCoordinator.activateRunningInstance()
+            return
+        }
+
         let application = NSApplication.shared
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(singleInstanceCoordinator: singleInstanceCoordinator)
         application.delegate = delegate
         application.setActivationPolicy(.regular)
         application.run()
@@ -30,6 +102,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 使用普通前台应用策略：程序坞显示应用图标，用户再次点击或双击应用时
         // 系统能够把激活事件交给 applicationShouldHandleReopen。
         NSApp.setActivationPolicy(.regular)
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(showMainWindowFromSecondLaunch),
+            name: SingleInstanceCoordinator.showMainWindowNotification,
+            object: nil
+        )
 
         let windowManager = AccessibilityWindowManager(permissionManager: permissionManager)
         let stateStore = WindowStateStore()
@@ -59,7 +137,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        DistributedNotificationCenter.default().removeObserver(self)
         overlayPanelController?.stop()
+    }
+
+    /// 强制启动第二个进程时，由单实例协调器把启动意图转发到这里。
+    @objc private func showMainWindowFromSecondLaunch(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        statusBarController?.showControlCenter()
     }
 
     /// 用户从程序坞点回应用时，如果主界面已关闭，则自动重新显示。
