@@ -176,7 +176,7 @@ final class ControlCenterViewController: NSViewController {
         action: #selector(toggleLaunchAtLogin(_:))
     )
     private lazy var silentLaunchCheckbox = NSButton(
-        checkboxWithTitle: "启动时静默运行，不自动打开设置窗口",
+        checkboxWithTitle: "静默启动",
         target: self,
         action: #selector(toggleSilentLaunch(_:))
     )
@@ -436,7 +436,7 @@ final class ControlCenterViewController: NSViewController {
             makeDetailLabel("尺寸修改会立即应用到最小化、最大化和关闭按钮。"),
             makeSeparator(),
             silentLaunchCheckbox,
-            makeDetailLabel("默认开启；启动后只显示菜单栏图标，点击图标或再次启动应用仍可打开设置。"),
+            makeDetailLabel("默认开启；启动时不自动打开设置窗口，只显示菜单栏图标。点击图标或再次启动应用仍可打开设置。"),
             makeSeparator(),
             loginRow,
             launchAtLoginStatusLabel,

@@ -2,13 +2,14 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.9 is based on release 1.3 and adds silent launch as a default-enabled General setting:
+Test build 1.4.10 is based on release 1.3 and improves the visual hierarchy of the Silent Launch setting:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
 - Button size is now part of General alongside window controls, launch at login, and window scanning.
 - General no longer collapses settings; window controls, control size, launch at login, and window scanning remain visible at all times.
 - A compact row layout makes every General setting directly available without an extra click.
+- The checkbox now uses the concise “Silent Launch” title, while its detailed behavior is shown as secondary text below it.
 - Silent launch is enabled by default, so initial launch, login launch, and in-app restart show only the menu bar item instead of opening Settings automatically.
 - Clicking the menu bar item, choosing Open Settings, or launching the app again while it is already running still opens Settings explicitly.
 - A new Shortcuts tab includes an opt-in “Press Delete to move files to Trash” checkbox, which is disabled by default.
@@ -69,4 +70,4 @@ Test build 1.4.9 is based on release 1.3 and adds silent launch as a default-ena
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-1.4.9.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.4.10.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
