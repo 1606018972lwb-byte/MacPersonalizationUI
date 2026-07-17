@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-正式版本 1.4 汇总了 1.3 之后的窗口一体化、快捷键和静默启动改进：
+测试版本 1.5.1 基于正式版本 1.4，重点修复 VS Code、Electron 应用和网页输入框中的输入法快捷键监听：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -20,6 +20,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 长按 Delete 只执行一次，避免按键重复连续移动 Finder 后续选中的文件；其他应用中的 Delete 不受影响。
 - “快捷键”页首项可以直接打开 macOS 的“键盘快捷键”设置。
 - 可分别录入并启用“切换输入法”和“切换中英文”局部快捷键，两项默认关闭，仅在文本框、搜索/地址栏、多行编辑器和网页可编辑区域生效。
+- 输入法快捷键改用只读 `CGEventTap` 监听，并在辅助功能权限稍后生效时自动重试，避免 VS Code/Electron 编辑器漏收按键事件。
+- 文本焦点识别支持嵌套的辅助功能焦点节点以及选区、插入点和可编辑值能力，可覆盖 VS Code 编辑器和浏览器对话输入框。
 - 支持单独 Command、Option、Control 或 Shift，多个修饰键组合，以及“修饰键＋普通键”；普通键使用物理键码保存，不受当前键盘布局影响。
 - 两个输入源功能不能使用相同组合；发生重复时提示且不覆盖原设置。
 - 纯修饰键在完整释放后才触发；期间按下普通键会取消本次切换，避免把 `Command-Shift-T` 等三键快捷键误判成 `Command-Shift`。
@@ -78,7 +80,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.5.1.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。

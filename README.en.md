@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Release 1.4 consolidates the integrated-window, shortcut, and silent-launch improvements made since 1.3:
+Test build 1.5.1 is based on release 1.4 and focuses on reliable input-method shortcuts in VS Code, Electron applications, and web input fields:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -17,6 +17,8 @@ Release 1.4 consolidates the integrated-window, shortcut, and silent-launch impr
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
 - The first Shortcuts action opens macOS Keyboard Shortcuts settings directly.
 - Separate opt-in shortcuts can be recorded for cycling input methods and toggling Chinese/English; both are disabled by default and only act in text fields, search/address fields, multiline editors, and editable web content.
+- Input-method shortcuts now use a listen-only `CGEventTap` with automatic retry after Accessibility permission becomes available, preventing missed events in VS Code and other Electron editors.
+- Focus detection follows nested Accessibility focus nodes and recognizes selection, insertion-point, and editable-value capabilities used by VS Code editors and browser chat inputs.
 - A single modifier, multiple modifiers, or modifiers plus a regular key can be recorded. Regular keys are stored as physical key codes, independent of the active keyboard layout.
 - The two input-source actions cannot share the same combination; duplicates show a warning and preserve the previous setting.
 - Modifier-only shortcuts fire after all modifiers are released and are cancelled if a regular key is pressed, preventing Command-Shift-T and similar shortcuts from being mistaken for Command-Shift.
@@ -70,4 +72,4 @@ Release 1.4 consolidates the integrated-window, shortcut, and silent-launch impr
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The release package is `dist/MacWindowButtons-1.4.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.5.1.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

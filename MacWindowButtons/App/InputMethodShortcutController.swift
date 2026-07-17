@@ -17,7 +17,9 @@ final class InputMethodShortcutController {
     }
 
     private let appSettings: AppSettings
-    private var localEventMonitors: [Any] = []
+    private var eventTap: CFMachPort?
+    private var eventTapRunLoopSource: CFRunLoopSource?
+    private var eventTapRetryTimer: Timer?
     private var modifierOnlyCandidateAction: Action?
     private var modifierOnlyCandidateIsInvalid = false
     private var statusTexts: [Action: String] = [:]
@@ -31,7 +33,6 @@ final class InputMethodShortcutController {
     }
 
     func start() {
-        installLocalShortcutMonitorsIfNeeded()
         for action in Action.allCases {
             guard isEnabled(action) else {
                 updateStatus("已关闭。", for: action)
@@ -51,11 +52,11 @@ final class InputMethodShortcutController {
                 updateStatus(message, for: action)
             }
         }
+        updateEventTapState()
     }
 
     func stop() {
-        localEventMonitors.forEach(NSEvent.removeMonitor)
-        localEventMonitors.removeAll()
+        stopEventTap()
     }
 
     func statusText(for action: Action) -> String {
@@ -96,6 +97,7 @@ final class InputMethodShortcutController {
             saveEnabled(false, for: action)
             resetModifierOnlyCandidate()
             updateStatus("已关闭。", for: action)
+            updateEventTapState()
             return .success
         }
         guard let shortcut = savedShortcut(for: action) else {
@@ -104,26 +106,119 @@ final class InputMethodShortcutController {
         }
         saveEnabled(true, for: action)
         updateStatus(localEnabledStatus(for: shortcut), for: action)
+        updateEventTapState()
         return .success
     }
 
-    /// 事件可以来自任意应用，但只有辅助功能焦点确认位于文本输入控件时才执行。
-    /// 监听器不拦截原事件，因此普通窗口区域和其他应用快捷键行为保持不变。
-    private func installLocalShortcutMonitorsIfNeeded() {
-        guard localEventMonitors.isEmpty else {
+    /// CGEventTap 比 NSEvent 全局观察器更可靠地接收 VS Code、Electron 和浏览器
+    /// 中的修饰键变化。回调始终返回原事件，只观察而不拦截应用自己的快捷键。
+    private func installEventTapIfNeeded() {
+        guard eventTap == nil else {
             return
         }
-        if let monitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.flagsChanged, .keyDown],
-            handler: { [weak self] event in
-                self?.handleLocalShortcutEvent(event)
+        guard AXIsProcessTrusted() else {
+            scheduleEventTapRetry()
+            return
+        }
+
+        let mask = (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
+            | (CGEventMask(1) << CGEventType.keyDown.rawValue)
+        let callback: CGEventTapCallBack = { _, type, event, userInfo in
+            guard let userInfo else {
+                return Unmanaged.passUnretained(event)
             }
-        ) {
-            localEventMonitors.append(monitor)
+            let controller = Unmanaged<InputMethodShortcutController>
+                .fromOpaque(userInfo)
+                .takeUnretainedValue()
+            return controller.handleEventTap(type: type, event: event)
+        }
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: callback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else {
+            NSLog("[MacWindowButtons] 无法创建输入法快捷键事件监听，等待辅助功能权限")
+            scheduleEventTapRetry()
+            return
+        }
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        eventTap = tap
+        eventTapRunLoopSource = source
+        eventTapRetryTimer?.invalidate()
+        eventTapRetryTimer = nil
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        NSLog("[MacWindowButtons] 输入法快捷键事件监听已启用")
+    }
+
+    private func handleEventTap(
+        type: CGEventType,
+        event: CGEvent
+    ) -> Unmanaged<CGEvent>? {
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            if let eventTap {
+                CGEvent.tapEnable(tap: eventTap, enable: true)
+            }
+            return Unmanaged.passUnretained(event)
+        }
+        handleLocalShortcutEvent(
+            type: type,
+            keyCode: UInt32(event.getIntegerValueField(.keyboardEventKeycode)),
+            modifiers: relevantModifiers(event.flags),
+            isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0
+        )
+        return Unmanaged.passUnretained(event)
+    }
+
+    private func updateEventTapState() {
+        if Action.allCases.contains(where: isEnabled) {
+            installEventTapIfNeeded()
+        } else {
+            stopEventTap()
         }
     }
 
-    private func handleLocalShortcutEvent(_ event: NSEvent) {
+    private func scheduleEventTapRetry() {
+        guard eventTapRetryTimer == nil else {
+            return
+        }
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self,
+                  Action.allCases.contains(where: isEnabled) else {
+                self?.eventTapRetryTimer?.invalidate()
+                self?.eventTapRetryTimer = nil
+                return
+            }
+            installEventTapIfNeeded()
+        }
+        timer.tolerance = 0.2
+        RunLoop.main.add(timer, forMode: .common)
+        eventTapRetryTimer = timer
+    }
+
+    private func stopEventTap() {
+        eventTapRetryTimer?.invalidate()
+        eventTapRetryTimer = nil
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+        }
+        if let eventTapRunLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), eventTapRunLoopSource, .commonModes)
+        }
+        eventTapRunLoopSource = nil
+        eventTap = nil
+        resetModifierOnlyCandidate()
+    }
+
+    private func handleLocalShortcutEvent(
+        type: CGEventType,
+        keyCode: UInt32,
+        modifiers: NSEvent.ModifierFlags,
+        isRepeat: Bool
+    ) {
         dispatchPrecondition(condition: .onQueue(.main))
         let enabledShortcuts = Action.allCases.compactMap { action -> (
             action: Action,
@@ -139,17 +234,16 @@ final class InputMethodShortcutController {
             return
         }
 
-        if event.type == .keyDown {
+        if type == .keyDown {
             // 任意普通键都会取消正在等待释放的纯修饰键组合，避免
             // Command-Shift-T 等三键快捷键被误判成 Command-Shift。
             modifierOnlyCandidateIsInvalid = true
-            guard !event.isARepeat else {
+            guard !isRepeat else {
                 return
             }
-            let eventModifiers = relevantModifiers(event.modifierFlags)
             guard let match = enabledShortcuts.first(where: {
-                $0.shortcut.keyCode == UInt32(event.keyCode)
-                    && $0.shortcut.modifiers == eventModifiers
+                $0.shortcut.keyCode == keyCode
+                    && $0.shortcut.modifiers == modifiers
             }),
                   isFocusedElementTextInput() else {
                 return
@@ -158,14 +252,14 @@ final class InputMethodShortcutController {
             return
         }
 
-        guard event.type == .flagsChanged else {
+        guard type == .flagsChanged else {
             return
         }
         let modifierOnlyShortcuts = enabledShortcuts.filter {
             $0.shortcut.keyCode == nil
         }
         handleModifierOnlyShortcut(
-            currentModifiers: relevantModifiers(event.modifierFlags),
+            currentModifiers: modifiers,
             shortcuts: modifierOnlyShortcuts
         )
     }
@@ -221,13 +315,19 @@ final class InputMethodShortcutController {
     }
 
     private func relevantModifiers(
-        _ flags: NSEvent.ModifierFlags
+        _ flags: CGEventFlags
     ) -> NSEvent.ModifierFlags {
-        flags.intersection([.command, .option, .control, .shift])
+        var modifiers: NSEvent.ModifierFlags = []
+        if flags.contains(.maskCommand) { modifiers.insert(.command) }
+        if flags.contains(.maskAlternate) { modifiers.insert(.option) }
+        if flags.contains(.maskControl) { modifiers.insert(.control) }
+        if flags.contains(.maskShift) { modifiers.insert(.shift) }
+        return modifiers
     }
 
     /// 通过当前前台进程的 AXFocusedUIElement 判断光标是否位于可编辑文本区域。
-    /// 常规文本框、搜索/地址栏、多行编辑器及网页可编辑文本均会报告这些角色。
+    /// Electron/Chromium 编辑器不总是报告标准 AXTextArea，因此同时检查文本选择、
+    /// 插入点、可写 Value 和语义描述等能力，而不是只依赖三个固定角色名。
     private func isFocusedElementTextInput() -> Bool {
         guard AXIsProcessTrusted(),
               let application = NSWorkspace.shared.frontmostApplication else {
@@ -241,21 +341,98 @@ final class InputMethodShortcutController {
         ), CFGetTypeID(rawElement) == AXUIElementGetTypeID() else {
             return false
         }
-        let element = rawElement as! AXUIElement
+        let element = deepestFocusedElement(from: rawElement as! AXUIElement)
         let role = element.stringAttribute(kAXRoleAttribute) ?? ""
+        let subrole = element.stringAttribute(kAXSubroleAttribute) ?? ""
         let textRoles: Set<String> = [
             "AXTextField",
             "AXTextArea",
-            "AXComboBox"
+            "AXTextView",
+            "AXComboBox",
+            "AXSearchField"
         ]
-        if textRoles.contains(role) {
+        if textRoles.contains(role) || subrole == "AXSearchField" {
             return true
         }
-        let subrole = element.stringAttribute(kAXSubroleAttribute) ?? ""
-        return (role.localizedCaseInsensitiveContains("text")
-            || subrole.localizedCaseInsensitiveContains("text")
-            || subrole == "AXSearchField")
-            && element.isAttributeSettable(kAXValueAttribute)
+
+        let attributes = attributeNames(of: element)
+        let hasSelectionRange = attributes.contains(kAXSelectedTextRangeAttribute)
+        let hasTextEditingState = hasSelectionRange
+            && (attributes.contains(kAXSelectedTextAttribute)
+                || attributes.contains(kAXVisibleCharacterRangeAttribute)
+                || attributes.contains("AXInsertionPointLineNumber")
+                || attributes.contains("AXNumberOfCharacters"))
+        if hasTextEditingState {
+            return true
+        }
+
+        let excludedValueRoles: Set<String> = [
+            "AXButton",
+            "AXCheckBox",
+            "AXRadioButton",
+            "AXSlider",
+            "AXMenuItem",
+            "AXPopUpButton",
+            "AXTabGroup"
+        ]
+        if element.isAttributeSettable(kAXValueAttribute),
+           !excludedValueRoles.contains(role) {
+            return true
+        }
+
+        let semanticText = [
+            role,
+            subrole,
+            element.stringAttribute(kAXDescriptionAttribute) ?? "",
+            element.stringAttribute(kAXHelpAttribute) ?? ""
+        ].joined(separator: " ").lowercased()
+        let editorKeywords = [
+            "text",
+            "editor",
+            "input",
+            "textarea",
+            "编辑",
+            "输入"
+        ]
+        if editorKeywords.contains(where: semanticText.contains),
+           (attributes.contains(kAXValueAttribute) || hasSelectionRange) {
+            return true
+        }
+
+        NSLog(
+            "[MacWindowButtons] 已识别输入法快捷键，但当前焦点不是可编辑文本：%@/%@ (%@)",
+            role,
+            subrole,
+            application.bundleIdentifier ?? "unknown"
+        )
+        return false
+    }
+
+    /// 某些 Electron 应用先把焦点报告在编辑器容器，再通过容器自己的
+    /// AXFocusedUIElement 指向实际文本节点；向下解析可覆盖 VS Code/网页编辑器。
+    private func deepestFocusedElement(from root: AXUIElement) -> AXUIElement {
+        var current = root
+        for _ in 0..<4 {
+            guard let rawChild = current.copyAttribute(kAXFocusedUIElementAttribute),
+                  CFGetTypeID(rawChild) == AXUIElementGetTypeID() else {
+                break
+            }
+            let child = rawChild as! AXUIElement
+            guard CFHash(child) != CFHash(current) else {
+                break
+            }
+            current = child
+        }
+        return current
+    }
+
+    private func attributeNames(of element: AXUIElement) -> Set<String> {
+        var rawNames: CFArray?
+        guard AXUIElementCopyAttributeNames(element, &rawNames) == .success,
+              let names = rawNames as? [String] else {
+            return []
+        }
+        return Set(names)
     }
 
     private func resetModifierOnlyCandidate() {
