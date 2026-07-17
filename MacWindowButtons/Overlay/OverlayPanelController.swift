@@ -254,23 +254,24 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         hideOverlay()
     }
 
-    /// 扫描全部普通应用窗口；控制中心在前台时只返回结果，不让浮层遮住设置窗口。
+    /// 扫描全部普通应用窗口，优先为当前真正获得焦点的窗口显示控制条。
     func refreshAllWindows() -> WindowRefreshResult {
         dispatchPrecondition(condition: .onQueue(.main))
         applicationState.enableWindowButtons()
 
         let discoveredWindows = windowManager.allControllableWindows()
-        let preferredWindow = lastExternalWindow.flatMap { previousWindow in
+        let focusedWindow = windowManager.focusedWindow()
+        let preferredWindow = focusedWindow.flatMap { focused in
+            discoveredWindows.first { window in
+                window.identifier == focused.identifier
+            }
+        } ?? lastExternalWindow.flatMap { previousWindow in
             discoveredWindows.first { window in
                 window.identifier == previousWindow.identifier
             }
         } ?? discoveredWindows.first
 
-        if isOwnApplicationFrontmost {
-            currentWindow = nil
-            windowTracker.stop()
-            hideOverlay()
-        } else if let preferredWindow {
+        if let preferredWindow {
             displayOverlay(for: preferredWindow)
         } else {
             currentWindow = nil
@@ -321,15 +322,6 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         dispatchPrecondition(condition: .onQueue(.main))
         guard applicationState.areWindowButtonsEnabled,
               permissionManager.isTrusted else {
-            currentWindow = nil
-            windowTracker.stop()
-            hideOverlay()
-            return
-        }
-
-        // 控制中心属于本应用，不是窗口增强的目标。浮层使用 floating 层级，如果继续
-        // 显示最近的外部窗口，会像截图中那样横穿设置窗口，造成“定位不准”的错觉。
-        guard !isOwnApplicationFrontmost else {
             currentWindow = nil
             windowTracker.stop()
             hideOverlay()
@@ -587,8 +579,4 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         )
     }
 
-    private var isOwnApplicationFrontmost: Bool {
-        NSWorkspace.shared.frontmostApplication?.processIdentifier
-            == ProcessInfo.processInfo.processIdentifier
-    }
 }

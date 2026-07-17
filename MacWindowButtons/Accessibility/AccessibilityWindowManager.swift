@@ -6,6 +6,27 @@ final class AccessibilityWindowManager {
     private let permissionManager: AccessibilityPermissionManager
     // AXFullScreen 在部分 SDK 中未导出 Swift 常量，但属性名是稳定的公开 AX 名称。
     private let fullScreenAttribute = "AXFullScreen"
+    private let persistentWindowSubroles: Set<String> = [
+        "AXStandardWindow",
+        "AXDialog",
+        "AXSystemDialog"
+    ]
+    private let browserBundleIdentifiers: Set<String> = [
+        "com.apple.Safari",
+        "com.brave.Browser",
+        "com.google.Chrome",
+        "com.google.Chrome.beta",
+        "com.google.Chrome.canary",
+        "com.google.Chrome.dev",
+        "com.microsoft.edgemac",
+        "com.microsoft.edgemac.Beta",
+        "com.microsoft.edgemac.Canary",
+        "com.microsoft.edgemac.Dev",
+        "company.thebrowser.Browser",
+        "org.chromium.Chromium",
+        "org.mozilla.firefox",
+        "com.vivaldi.Vivaldi"
+    ]
     private let excludedBundleIdentifiers: Set<String> = [
         "com.apple.dock",
         "com.apple.systemuiserver",
@@ -18,12 +39,31 @@ final class AccessibilityWindowManager {
 
     /// 返回当前焦点标准窗口；无权限、全屏、最小化或无有效窗口时返回 nil。
     func focusedWindow() -> TargetWindow? {
-        guard permissionManager.isTrusted,
-              let application = NSWorkspace.shared.frontmostApplication,
+        guard permissionManager.isTrusted else {
+            return nil
+        }
+
+        // UIElement/附件应用显示设置窗口后，NSWorkspace 可能仍把之前的普通应用
+        // 报告为 frontmost。只要本应用处于活动状态且确实有 Key Window，就优先
+        // 读取自身焦点窗口，避免控制条错误绑定到后方 Finder 或浏览器。
+        if NSApp.isActive,
+           NSApp.keyWindow?.isVisible == true,
+           let ownApplication = NSRunningApplication(
+                processIdentifier: ProcessInfo.processInfo.processIdentifier
+           ),
+           let ownWindow = focusedWindow(in: ownApplication) {
+            return ownWindow
+        }
+
+        guard let application = NSWorkspace.shared.frontmostApplication,
               isEligible(application) else {
             return nil
         }
 
+        return focusedWindow(in: application)
+    }
+
+    private func focusedWindow(in application: NSRunningApplication) -> TargetWindow? {
         let applicationElement = AXUIElementCreateApplication(application.processIdentifier)
         guard let rawWindow = applicationElement.copyAttribute(kAXFocusedWindowAttribute),
               CFGetTypeID(rawWindow) == AXUIElementGetTypeID() else {
@@ -58,9 +98,9 @@ final class AccessibilityWindowManager {
     }
 
     private func isEligible(_ application: NSRunningApplication) -> Bool {
-        application.activationPolicy == .regular
-            && application.processIdentifier != ProcessInfo.processInfo.processIdentifier
-            && application.bundleIdentifier != Bundle.main.bundleIdentifier
+        let isOwnApplication = application.processIdentifier
+            == ProcessInfo.processInfo.processIdentifier
+        return (application.activationPolicy == .regular || isOwnApplication)
             && !excludedBundleIdentifiers.contains(application.bundleIdentifier ?? "")
             && !application.isTerminated
     }
@@ -83,7 +123,30 @@ final class AccessibilityWindowManager {
             return nil
         }
 
+        let subrole = window.stringAttribute(kAXSubroleAttribute) ?? ""
         let closeButton = window.copyAttribute(kAXCloseButtonAttribute)
+        let canClose = closeButton.map {
+            CFGetTypeID($0) == AXUIElementGetTypeID()
+        } ?? false
+        let canMinimize = window.isAttributeSettable(kAXMinimizedAttribute)
+        let canResize = window.isAttributeSettable(kAXPositionAttribute)
+            && window.isAttributeSettable(kAXSizeAttribute)
+
+        // 浏览器扩展经常把插件气泡报告为 AXDialog。浏览器中只接受真正的
+        // AXStandardWindow；浏览器设置页如果位于标签页内，仍属于这个主窗口。
+        if browserBundleIdentifiers.contains(application.bundleIdentifier ?? ""),
+           subrole != "AXStandardWindow" {
+            return nil
+        }
+
+        // 浏览器扩展弹窗、菜单面板和气泡虽然有时也报告 AXWindow，但通常使用
+        // AXFloatingWindow/AXUnknown 子角色，且没有原生关闭、最小化或缩放能力。
+        // 普通偏好设置窗口仍是 AXStandardWindow/AXDialog，并至少有关闭按钮。
+        guard persistentWindowSubroles.contains(subrole),
+              canClose || canMinimize || canResize else {
+            return nil
+        }
+
         return TargetWindow(
             element: window,
             processIdentifier: application.processIdentifier,
@@ -93,10 +156,9 @@ final class AccessibilityWindowManager {
             frame: CGRect(origin: position, size: size),
             isMinimized: isMinimized,
             isFullScreen: isFullScreen,
-            canMinimize: window.isAttributeSettable(kAXMinimizedAttribute),
-            canResize: window.isAttributeSettable(kAXPositionAttribute)
-                && window.isAttributeSettable(kAXSizeAttribute),
-            canClose: closeButton.map { CFGetTypeID($0) == AXUIElementGetTypeID() } ?? false
+            canMinimize: canMinimize,
+            canResize: canResize,
+            canClose: canClose
         )
     }
 }
