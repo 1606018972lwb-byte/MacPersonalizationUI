@@ -1,13 +1,98 @@
 import AppKit
 
+/// 常规设置中的单行折叠项。标题行始终只占一行，详细控件按需展开。
+private final class PreferenceDisclosureSection: NSStackView {
+    private let chevronView = NSImageView()
+    private let summaryLabel = NSTextField(labelWithString: "")
+    private let detailContainer = NSView()
+    var onSelect: ((PreferenceDisclosureSection) -> Void)?
+
+    init(title: String, summary: String, detailView: NSView) {
+        super.init(frame: .zero)
+        orientation = .vertical
+        alignment = .leading
+        spacing = 0
+
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        summaryLabel.stringValue = summary
+        summaryLabel.font = .systemFont(ofSize: 11)
+        summaryLabel.textColor = .secondaryLabelColor
+        summaryLabel.lineBreakMode = .byTruncatingTail
+
+        chevronView.image = NSImage(
+            systemSymbolName: "chevron.right",
+            accessibilityDescription: "展开设置"
+        )
+        chevronView.contentTintColor = .secondaryLabelColor
+        chevronView.translatesAutoresizingMaskIntoConstraints = false
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let header = NSStackView(views: [chevronView, titleLabel, spacer, summaryLabel])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        header.spacing = 8
+        header.translatesAutoresizingMaskIntoConstraints = false
+        header.addGestureRecognizer(
+            NSClickGestureRecognizer(target: self, action: #selector(selectSection))
+        )
+
+        detailView.translatesAutoresizingMaskIntoConstraints = false
+        detailContainer.addSubview(detailView)
+        NSLayoutConstraint.activate([
+            detailView.leadingAnchor.constraint(equalTo: detailContainer.leadingAnchor, constant: 24),
+            detailView.trailingAnchor.constraint(equalTo: detailContainer.trailingAnchor),
+            detailView.topAnchor.constraint(equalTo: detailContainer.topAnchor, constant: 6),
+            detailView.bottomAnchor.constraint(equalTo: detailContainer.bottomAnchor, constant: -12)
+        ])
+
+        let separator = NSBox()
+        separator.boxType = .separator
+        addArrangedSubview(header)
+        addArrangedSubview(detailContainer)
+        addArrangedSubview(separator)
+        NSLayoutConstraint.activate([
+            header.widthAnchor.constraint(equalTo: widthAnchor),
+            header.heightAnchor.constraint(equalToConstant: 36),
+            detailContainer.widthAnchor.constraint(equalTo: widthAnchor),
+            separator.widthAnchor.constraint(equalTo: widthAnchor),
+            chevronView.widthAnchor.constraint(equalToConstant: 12),
+            chevronView.heightAnchor.constraint(equalToConstant: 12)
+        ])
+        setExpanded(false)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    func setSummary(_ text: String) {
+        summaryLabel.stringValue = text
+    }
+
+    func setExpanded(_ expanded: Bool) {
+        detailContainer.isHidden = !expanded
+        chevronView.image = NSImage(
+            systemSymbolName: expanded ? "chevron.down" : "chevron.right",
+            accessibilityDescription: expanded ? "收起设置" : "展开设置"
+        )
+    }
+
+    @objc private func selectSection() {
+        onSelect?(self)
+    }
+}
+
 /// 使用传统 macOS 偏好设置布局展示应用配置。
 ///
-/// 顶部分段控件用于切换“常规、按钮、权限、更新、其他、关于”，所有页面共用同一个
+/// 顶部分段控件用于切换“常规、权限、更新、其他、关于”，所有页面共用同一个
 /// 分组内容框，视觉结构接近经典桌面软件设置窗口。
 final class ControlCenterViewController: NSViewController {
     private enum SettingsPage: Int, CaseIterable {
         case general
-        case buttons
         case permission
         case update
         case other
@@ -16,7 +101,6 @@ final class ControlCenterViewController: NSViewController {
         var title: String {
             switch self {
             case .general: "常规"
-            case .buttons: "按钮"
             case .permission: "权限"
             case .update: "更新"
             case .other: "其他"
@@ -108,6 +192,11 @@ final class ControlCenterViewController: NSViewController {
     )
     private let pageContainer = NSView()
     private var pageViews: [NSView] = []
+    private var generalSections: [PreferenceDisclosureSection] = []
+    private weak var behaviorSection: PreferenceDisclosureSection?
+    private weak var sizeSection: PreferenceDisclosureSection?
+    private weak var startupSection: PreferenceDisclosureSection?
+    private weak var scanSection: PreferenceDisclosureSection?
 
     init(
         applicationState: ApplicationState,
@@ -165,7 +254,6 @@ final class ControlCenterViewController: NSViewController {
 
         pageViews = [
             makeGeneralPage(),
-            makeButtonsPage(),
             makePermissionPage(),
             makeUpdatePage(),
             makeOtherPage(),
@@ -186,7 +274,7 @@ final class ControlCenterViewController: NSViewController {
         NSLayoutConstraint.activate([
             pageControl.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 12),
             pageControl.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
-            pageControl.widthAnchor.constraint(equalToConstant: 510),
+            pageControl.widthAnchor.constraint(equalToConstant: 440),
 
             contentBox.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: 16),
             contentBox.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -16),
@@ -224,6 +312,7 @@ final class ControlCenterViewController: NSViewController {
         refreshLaunchAtLoginInterface()
         refreshUpdateInterface()
         refreshAppearanceInterface()
+        refreshGeneralSectionSummaries()
     }
 
     /// 权限刚生效时自动启用功能并立即扫描窗口。
@@ -239,7 +328,6 @@ final class ControlCenterViewController: NSViewController {
 
     private func makeGeneralPage() -> NSView {
         enableCheckbox.font = .systemFont(ofSize: 13)
-
         refreshButton.bezelStyle = .rounded
         refreshButton.image = NSImage(
             systemSymbolName: "arrow.clockwise",
@@ -255,65 +343,22 @@ final class ControlCenterViewController: NSViewController {
         launchAtLoginStatusLabel.maximumNumberOfLines = 2
         openLoginItemsButton.bezelStyle = .rounded
 
-        let loginRow = NSStackView(views: [
-            launchAtLoginCheckbox,
-            makeFlexibleSpacer(),
-            openLoginItemsButton
-        ])
-        loginRow.orientation = .horizontal
-        loginRow.alignment = .centerY
+        func detailStack(_ views: [NSView]) -> NSStackView {
+            let stack = NSStackView(views: views)
+            stack.orientation = .vertical
+            stack.alignment = .leading
+            stack.spacing = 8
+            return stack
+        }
 
-        let startupStack = NSStackView(views: [
-            makeSectionTitle("开机启动"),
-            loginRow,
-            launchAtLoginStatusLabel
-        ])
-        startupStack.orientation = .vertical
-        startupStack.alignment = .leading
-        startupStack.spacing = 8
-        loginRow.widthAnchor.constraint(equalTo: startupStack.widthAnchor).isActive = true
-
-        let behaviorStack = NSStackView(views: [
-            makeSectionTitle("窗口行为"),
+        let behaviorDetails = detailStack([
             enableCheckbox,
             makeDetailLabel("控制行会显示在当前窗口顶部，左侧空白区域可以拖动窗口。")
         ])
-        behaviorStack.orientation = .vertical
-        behaviorStack.alignment = .leading
-        behaviorStack.spacing = 10
 
-        let refreshRow = NSStackView(views: [
-            makeFieldLabel("窗口扫描："),
-            refreshButton,
-            makeFlexibleSpacer()
-        ])
-        refreshRow.orientation = .horizontal
-        refreshRow.alignment = .centerY
-        refreshRow.spacing = 10
-
-        let scanStack = NSStackView(views: [
-            makeSectionTitle("运行状态"),
-            refreshRow,
-            refreshStatusLabel
-        ])
-        scanStack.orientation = .vertical
-        scanStack.alignment = .leading
-        scanStack.spacing = 10
-
-        return makePageStack([
-            behaviorStack,
-            makeSeparator(),
-            startupStack,
-            makeSeparator(),
-            scanStack
-        ])
-    }
-
-    private func makeButtonsPage() -> NSView {
         sizeControl.segmentStyle = .rounded
         sizeControl.translatesAutoresizingMaskIntoConstraints = false
         sizeControl.widthAnchor.constraint(equalToConstant: 250).isActive = true
-
         let sizeRow = NSStackView(views: [
             makeFieldLabel("按钮大小："),
             sizeControl,
@@ -322,53 +367,76 @@ final class ControlCenterViewController: NSViewController {
         sizeRow.orientation = .horizontal
         sizeRow.alignment = .centerY
         sizeRow.spacing = 10
-
-        let preview = NSBox()
-        preview.boxType = .custom
-        preview.titlePosition = .noTitle
-        preview.borderWidth = 1
-        preview.cornerRadius = 5
-        preview.borderColor = .separatorColor
-        preview.fillColor = NSColor.black.withAlphaComponent(0.18)
-
-        let previewTitle = NSTextField(labelWithString: "空白拖动区域")
-        previewTitle.textColor = .secondaryLabelColor
-        previewTitle.font = .systemFont(ofSize: 12)
-        let symbols = NSTextField(labelWithString: "—     □     ×")
-        symbols.font = .monospacedSystemFont(ofSize: 16, weight: .medium)
-        symbols.alignment = .center
-        let previewRow = NSStackView(views: [
-            previewTitle,
-            makeFlexibleSpacer(),
-            symbols
-        ])
-        previewRow.orientation = .horizontal
-        previewRow.alignment = .centerY
-        previewRow.spacing = 12
-        previewRow.translatesAutoresizingMaskIntoConstraints = false
-        let previewContent = NSView()
-        previewContent.addSubview(previewRow)
-        preview.contentView = previewContent
-        NSLayoutConstraint.activate([
-            previewRow.leadingAnchor.constraint(equalTo: previewContent.leadingAnchor, constant: 14),
-            previewRow.trailingAnchor.constraint(equalTo: previewContent.trailingAnchor, constant: -14),
-            previewRow.centerYAnchor.constraint(equalTo: previewContent.centerYAnchor),
-            preview.heightAnchor.constraint(equalToConstant: 54)
-        ])
-
-        let stack = NSStackView(views: [
-            makeSectionTitle("窗口控制按钮"),
+        let sizeDetails = detailStack([
             sizeRow,
-            makeDetailLabel("尺寸修改会立即应用到最小化、最大化和关闭按钮。"),
-            makeSeparator(),
-            makeSectionTitle("布局预览"),
-            preview,
-            makeDetailLabel("控制行宽度始终与目标窗口一致，三个按钮固定在最右侧。")
+            makeDetailLabel("尺寸修改会立即应用到最小化、最大化和关闭按钮。")
         ])
+        sizeRow.widthAnchor.constraint(equalTo: sizeDetails.widthAnchor).isActive = true
+
+        let loginRow = NSStackView(views: [
+            launchAtLoginCheckbox,
+            makeFlexibleSpacer(),
+            openLoginItemsButton
+        ])
+        loginRow.orientation = .horizontal
+        loginRow.alignment = .centerY
+        let startupDetails = detailStack([
+            loginRow,
+            launchAtLoginStatusLabel
+        ])
+        loginRow.widthAnchor.constraint(equalTo: startupDetails.widthAnchor).isActive = true
+
+        let refreshRow = NSStackView(views: [
+            refreshButton,
+            makeFlexibleSpacer()
+        ])
+        refreshRow.orientation = .horizontal
+        refreshRow.alignment = .centerY
+        refreshRow.spacing = 10
+        let scanDetails = detailStack([
+            refreshRow,
+            refreshStatusLabel
+        ])
+        refreshRow.widthAnchor.constraint(equalTo: scanDetails.widthAnchor).isActive = true
+
+        let behavior = PreferenceDisclosureSection(
+            title: "窗口控制",
+            summary: "",
+            detailView: behaviorDetails
+        )
+        let size = PreferenceDisclosureSection(
+            title: "按钮大小",
+            summary: "",
+            detailView: sizeDetails
+        )
+        let startup = PreferenceDisclosureSection(
+            title: "开机启动",
+            summary: "",
+            detailView: startupDetails
+        )
+        let scan = PreferenceDisclosureSection(
+            title: "窗口扫描",
+            summary: "点击查看与刷新",
+            detailView: scanDetails
+        )
+        generalSections = [behavior, size, startup, scan]
+        behaviorSection = behavior
+        sizeSection = size
+        startupSection = startup
+        scanSection = scan
+        generalSections.forEach { section in
+            section.onSelect = { [weak self] selectedSection in
+                self?.selectGeneralSection(selectedSection)
+            }
+        }
+
+        let stack = NSStackView(views: generalSections)
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 11
-        preview.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        stack.spacing = 0
+        generalSections.forEach { section in
+            section.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
         return pinStackToPage(stack)
     }
 
@@ -718,6 +786,36 @@ final class ControlCenterViewController: NSViewController {
         }
     }
 
+    /// 更新常规页每一行右侧的简要状态，让用户无需展开也能了解当前配置。
+    private func refreshGeneralSectionSummaries() {
+        if permissionManager.isTrusted {
+            behaviorSection?.setSummary(
+                applicationState.areWindowButtonsEnabled ? "已开启" : "已关闭"
+            )
+        } else {
+            behaviorSection?.setSummary("缺少权限")
+        }
+        sizeSection?.setSummary(appSettings.controlSize.displayName)
+
+        switch launchAtLoginController.state {
+        case .enabled:
+            startupSection?.setSummary("已开启")
+        case .disabled:
+            startupSection?.setSummary("已关闭")
+        case .requiresApproval:
+            startupSection?.setSummary("需要批准")
+        case .unavailable:
+            startupSection?.setSummary("不可用")
+        }
+    }
+
+    /// 常规页始终只展开一个设置；选择新项目时自动收起上一个项目。
+    private func selectGeneralSection(_ selectedSection: PreferenceDisclosureSection) {
+        generalSections.forEach { section in
+            section.setExpanded(section === selectedSection)
+        }
+    }
+
     @objc private func selectSettingsPage(_ sender: NSSegmentedControl) {
         guard SettingsPage(rawValue: sender.selectedSegment) != nil else {
             return
@@ -758,18 +856,21 @@ final class ControlCenterViewController: NSViewController {
         } else {
             applicationState.pauseWindowButtons()
         }
+        refreshGeneralSectionSummaries()
     }
 
     @objc private func toggleLaunchAtLogin(_ sender: NSButton) {
         do {
             try launchAtLoginController.setEnabled(sender.state == .on)
             refreshLaunchAtLoginInterface()
+            refreshGeneralSectionSummaries()
             if launchAtLoginController.state == .requiresApproval {
                 showLoginItemApprovalAlert()
             }
         } catch {
             sender.state = .off
             refreshLaunchAtLoginInterface()
+            refreshGeneralSectionSummaries()
             let alert = NSAlert()
             alert.alertStyle = .warning
             alert.messageText = "无法启用开机自启动"
@@ -842,17 +943,20 @@ final class ControlCenterViewController: NSViewController {
             return
         }
         appSettings.setControlSize(sizes[sender.selectedSegment])
+        refreshGeneralSectionSummaries()
     }
 
     @objc private func refreshAllWindows() {
         guard permissionManager.isTrusted else {
             refreshStatusLabel.stringValue = "缺少辅助功能权限，授权后才能扫描窗口。"
+            scanSection?.setSummary("缺少权限")
             refreshInterface()
             return
         }
 
         guard let windowRefresher else {
             refreshStatusLabel.stringValue = "窗口刷新服务当前不可用。"
+            scanSection?.setSummary("不可用")
             NSLog("[MacWindowButtons] 窗口刷新服务已失效")
             return
         }
@@ -863,11 +967,14 @@ final class ControlCenterViewController: NSViewController {
         enableCheckbox.state = .on
         if result.discoveredWindowCount == 0 {
             refreshStatusLabel.stringValue = "没有找到可控制的普通应用窗口。"
+            scanSection?.setSummary("未找到窗口")
         } else if let targetApplicationName = result.targetApplicationName,
                   result.areControlsVisible {
             refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，已为 \(targetApplicationName) 显示控制行。"
+            scanSection?.setSummary("\(result.discoveredWindowCount) 个窗口 · \(targetApplicationName)")
         } else {
             refreshStatusLabel.stringValue = "已扫描 \(result.discoveredWindowCount) 个窗口，请点击一个目标窗口。"
+            scanSection?.setSummary("\(result.discoveredWindowCount) 个窗口")
         }
     }
 
