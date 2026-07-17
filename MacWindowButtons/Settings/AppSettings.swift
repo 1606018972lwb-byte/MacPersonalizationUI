@@ -131,6 +131,7 @@ final class AppSettings {
         static let modifierOnlyKeyCode = UInt32.max
         static let controlSize = "windowControlButtonSize"
         static let controlAppearance = "windowControlAppearance"
+        static let launchesSilently = "launchesSilently"
         static let checksForUpdates = "checksForUpdates"
         static let updateInterval = "updateCheckInterval"
         static let automaticallyInstallsUpdates = "automaticallyInstallsUpdates"
@@ -151,6 +152,7 @@ final class AppSettings {
 
     private(set) var controlSize: ControlSize
     private(set) var controlAppearance: ControlAppearance
+    private(set) var launchesSilently: Bool
     private(set) var checksForUpdates: Bool
     private(set) var updateInterval: UpdateInterval
     private(set) var automaticallyInstallsUpdates: Bool
@@ -170,6 +172,9 @@ final class AppSettings {
         controlAppearance = ControlAppearance(
             rawValue: defaults.string(forKey: Key.controlAppearance) ?? ""
         ) ?? .floating
+        // 菜单栏工具默认在后台静默启动；设置窗口由用户点击菜单栏图标或
+        // 再次启动应用时主动打开，避免登录后打断当前工作。
+        launchesSilently = defaults.object(forKey: Key.launchesSilently) as? Bool ?? true
         checksForUpdates = defaults.object(forKey: Key.checksForUpdates) as? Bool ?? true
         updateInterval = UpdateInterval(
             rawValue: defaults.string(forKey: Key.updateInterval) ?? ""
@@ -272,6 +277,11 @@ final class AppSettings {
 
     func removeControlAppearanceObserver(_ identifier: UUID) {
         controlAppearanceObservers.removeValue(forKey: identifier)
+    }
+
+    func setLaunchesSilently(_ enabled: Bool) {
+        launchesSilently = enabled
+        defaults.set(enabled, forKey: Key.launchesSilently)
     }
 
     func setChecksForUpdates(_ enabled: Bool) {

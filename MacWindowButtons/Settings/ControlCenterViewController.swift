@@ -175,6 +175,11 @@ final class ControlCenterViewController: NSViewController {
         target: self,
         action: #selector(toggleLaunchAtLogin(_:))
     )
+    private lazy var silentLaunchCheckbox = NSButton(
+        checkboxWithTitle: "启动时静默运行，不自动打开设置窗口",
+        target: self,
+        action: #selector(toggleSilentLaunch(_:))
+    )
     private let launchAtLoginStatusLabel = NSTextField(wrappingLabelWithString: "")
     private lazy var openLoginItemsButton = NSButton(
         title: "打开登录项设置",
@@ -360,6 +365,7 @@ final class ControlCenterViewController: NSViewController {
             sizeControl.selectedSegment = selectedIndex
         }
         refreshLaunchAtLoginInterface()
+        silentLaunchCheckbox.state = appSettings.launchesSilently ? .on : .off
         refreshUpdateInterface()
         refreshAppearanceInterface()
         refreshShortcutInterface()
@@ -428,6 +434,9 @@ final class ControlCenterViewController: NSViewController {
             makeSeparator(),
             sizeRow,
             makeDetailLabel("尺寸修改会立即应用到最小化、最大化和关闭按钮。"),
+            makeSeparator(),
+            silentLaunchCheckbox,
+            makeDetailLabel("默认开启；启动后只显示菜单栏图标，点击图标或再次启动应用仍可打开设置。"),
             makeSeparator(),
             loginRow,
             launchAtLoginStatusLabel,
@@ -990,6 +999,10 @@ final class ControlCenterViewController: NSViewController {
                 launchAtLoginController.openSystemSettings()
             }
         }
+    }
+
+    @objc private func toggleSilentLaunch(_ sender: NSButton) {
+        appSettings.setLaunchesSilently(sender.state == .on)
     }
 
     @objc private func openLoginItemsSettings() {

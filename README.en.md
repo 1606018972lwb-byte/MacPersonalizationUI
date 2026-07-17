@@ -2,13 +2,15 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.8 is based on release 1.3 and restores a full-width transparent integrated control row:
+Test build 1.4.9 is based on release 1.3 and adds silent launch as a default-enabled General setting:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
 - Button size is now part of General alongside window controls, launch at login, and window scanning.
 - General no longer collapses settings; window controls, control size, launch at login, and window scanning remain visible at all times.
 - A compact row layout makes every General setting directly available without an extra click.
+- Silent launch is enabled by default, so initial launch, login launch, and in-app restart show only the menu bar item instead of opening Settings automatically.
+- Clicking the menu bar item, choosing Open Settings, or launching the app again while it is already running still opens Settings explicitly.
 - A new Shortcuts tab includes an opt-in “Press Delete to move files to Trash” checkbox, which is disabled by default.
 - The shortcut only intercepts Delete while Finder is frontmost and delegates the action to Finder's native Command-Delete behavior, preserving Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
@@ -50,13 +52,13 @@ Test build 1.4.8 is based on release 1.3 and restores a full-width transparent i
 - A native AppKit control center opened by clicking the menu bar icon.
 - A clear missing-permission card and click-triggered authorization guidance.
 - An original Retina macOS application icon and complete AppIcon asset catalog.
-- A control-center window that opens on launch and reopens when the running app is double-clicked.
+- An optional control-center window on first launch that always reopens when the running app is launched again or its menu bar item is clicked.
 - A high-contrast template menu bar icon and a visible permission status card when permission is missing.
 - A right-click menu for opening settings, restarting the app, or quitting.
 - A main-window refresh action that scans all controllable windows and reports the count.
 - Immediate display of the minimize, maximize/restore, and close controls on the most recent target window after a refresh.
 - A UIElement menu bar mode that keeps the Dock icon hidden while the application is running.
-- A standard main window that opens on first launch and reopens after double-clicking the app or clicking its menu bar icon.
+- A standard settings window that opens on first launch when silent launch is disabled and remains directly accessible from the menu bar.
 - An explicit programmatic AppDelegate bootstrap for the storyboard-free project, ensuring launch callbacks always create the main window.
 - A process-level lock that permits only one running instance; repeated launches activate the existing instance and show its main window.
 - A single-instance-aware restart flow that releases the lock before launching the replacement process.
@@ -65,6 +67,6 @@ Test build 1.4.8 is based on release 1.3 and restores a full-width transparent i
 - Automatic window scanning as soon as Accessibility permission becomes effective.
 - A DMG build script with a stable designated requirement for consistent local TCC identity across test updates.
 
-The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
+The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-1.4.8.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.4.9.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

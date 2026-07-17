@@ -143,9 +143,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         inputMethodShortcutController.start()
         updateManager.start()
 
-        // 等待应用完成首次激活后立即显示主界面。
-        DispatchQueue.main.async {
-            statusController.showControlCenter()
+        // 默认静默进入菜单栏；关闭“静默启动”后保留原有的首次启动弹窗行为。
+        if !appSettings.launchesSilently {
+            DispatchQueue.main.async {
+                statusController.showControlCenter()
+            }
         }
     }
 
@@ -165,7 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 应用重新成为活动状态时，如果主界面已关闭，则自动重新显示。
     func applicationDidBecomeActive(_ notification: Notification) {
         DispatchQueue.main.async { [weak self] in
-            guard let statusBarController = self?.statusBarController,
+            guard let self,
+                  !appSettings.launchesSilently,
+                  let statusBarController,
                   !statusBarController.isControlCenterVisible else {
                 return
             }
