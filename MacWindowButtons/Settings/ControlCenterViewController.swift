@@ -548,12 +548,12 @@ final class ControlCenterViewController: NSViewController {
             makeSectionTitle("窗口外观"),
             appearanceRow,
             makeDetailLabel(
-                "“当前悬浮样式”在窗口上方保留独立控制行；“与窗口一体”透明覆盖在标题栏右侧。"
+                "两种样式都在窗口上方保留完整控制行；“与窗口一体”会将按钮以外区域设为透明。"
             ),
             makeSeparator(),
             makeSectionTitle("一体样式说明"),
             makeDetailLabel(
-                "一体模式只创建三个按钮大小的面板，其余区域完全穿透，不影响下方点击、输入文字或拖动窗口。"
+                "透明区域仍属于控制面板，按住空白处会由面板直接带动目标窗口移动；目标窗口位于预留行下方，不会遮挡其原有控件。"
             )
         ])
         stack.orientation = .vertical

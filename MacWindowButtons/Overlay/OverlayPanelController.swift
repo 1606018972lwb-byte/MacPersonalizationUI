@@ -339,8 +339,9 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     }
 
     private func displayOverlay(for targetWindow: TargetWindow) {
-        if appSettings.controlAppearance == .floating,
-           actionService.ensureTopClearance(
+        // 两种样式都在目标窗口上方保留真实控制行；一体样式只是把空白区域
+        // 绘制为透明，仍由该面板直接接管拖动，不再依赖原窗口移动通知追随。
+        if actionService.ensureTopClearance(
             for: targetWindow,
             clearance: appSettings.controlSize.buttonHeight
            ) {
@@ -377,21 +378,10 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     /// 原生窗口拖动期间走此快速路径，可显著减少 AX 查询和主线程排队。
     private func positionOverlay(using appKitFrame: CGRect) {
         let buttonHeight = appSettings.controlSize.buttonHeight
-        let overlaySize: CGSize
-        let origin: CGPoint
-        switch appSettings.controlAppearance {
-        case .floating:
-            overlaySize = CGSize(width: appKitFrame.width, height: buttonHeight)
-            origin = CGPoint(x: appKitFrame.minX, y: appKitFrame.maxY)
-        case .integrated:
-            // 只创建三个按钮大小的真实窗口。其余区域没有透明 NSPanel 覆盖，
-            // 所以下方应用能正常接收点击、键盘焦点、文字输入和标题栏拖动。
-            overlaySize = appSettings.controlSize.panelSize
-            origin = CGPoint(
-                x: appKitFrame.maxX - overlaySize.width,
-                y: appKitFrame.maxY - overlaySize.height
-            )
-        }
+        // 面板始终与目标窗口同宽并位于窗口上方。一体样式不会缩成三个按钮，
+        // 左侧透明区域仍属于真实面板，可直接带动目标窗口移动。
+        let overlaySize = CGSize(width: appKitFrame.width, height: buttonHeight)
+        let origin = CGPoint(x: appKitFrame.minX, y: appKitFrame.maxY)
         if panel.frame.size != overlaySize {
             panel.setContentSize(overlaySize)
             buttonsView.frame = CGRect(origin: .zero, size: overlaySize)
@@ -588,9 +578,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     }
 
     private var reservedTopHeight: CGFloat {
-        appSettings.controlAppearance == .floating
-            ? appSettings.controlSize.buttonHeight
-            : 0
+        appSettings.controlSize.buttonHeight
     }
 
 }

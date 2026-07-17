@@ -1,6 +1,6 @@
 import AppKit
 
-/// 悬浮样式绘制整行背景；一体样式只保留三个按钮，其余区域由原窗口直接接收事件。
+/// 悬浮样式绘制整行背景；一体样式保留同宽透明面板并由空白区域直接代理窗口拖动。
 final class WindowButtonsView: NSView {
     let minimizeButton = WindowControlButton(kind: .minimize)
     let maximizeButton = WindowControlButton(kind: .maximize)
@@ -114,8 +114,8 @@ final class WindowButtonsView: NSView {
                 .layerMaxXMaxYCorner
             ]
         case .integrated:
-            // 一体模式完全不绘制背景。面板本身也会缩到只有三个按钮宽，透明区域
-            // 不属于任何悬浮窗口，因此点击、文字输入和原生标题栏拖动可直接穿透。
+            // 不绘制任何底色，但透明区域仍是实际 NSPanel 的一部分。它位于目标
+            // 窗口上方预留行中，因此不会遮住原窗口控件，同时可直接代理拖动。
             backgroundView.isHidden = true
         }
         backgroundView.layer?.cornerCurve = .continuous
