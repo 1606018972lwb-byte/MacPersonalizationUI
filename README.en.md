@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.10 is based on release 1.3 and improves the visual hierarchy of the Silent Launch setting:
+Release 1.4 consolidates the integrated-window, shortcut, and silent-launch improvements made since 1.3:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -70,4 +70,4 @@ Test build 1.4.10 is based on release 1.3 and improves the visual hierarchy of t
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-1.4.10.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The release package is `dist/MacWindowButtons-1.4.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

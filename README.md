@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-测试版本 1.4.10 基于正式版本 1.3，优化静默启动设置的文字层级：
+正式版本 1.4 汇总了 1.3 之后的窗口一体化、快捷键和静默启动改进：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -78,7 +78,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.10.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
