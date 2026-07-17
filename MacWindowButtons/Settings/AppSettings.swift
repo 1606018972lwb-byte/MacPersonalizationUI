@@ -3,6 +3,26 @@ import Foundation
 
 /// 使用 UserDefaults 保存用户可调节的界面设置。
 final class AppSettings {
+    enum ControlAppearance: String, CaseIterable {
+        case floating
+        case integrated
+
+        var displayName: String {
+            switch self {
+            case .floating: "当前悬浮样式"
+            case .integrated: "与窗口一体"
+            }
+        }
+
+        /// 一体样式稍微覆盖原窗口顶部，填平原生窗口圆角留下的视觉缺口。
+        var windowOverlap: CGFloat {
+            switch self {
+            case .floating: 0
+            case .integrated: 5
+            }
+        }
+    }
+
     enum UpdateInterval: String, CaseIterable {
         case daily
         case weekly
@@ -71,6 +91,7 @@ final class AppSettings {
 
     private enum Key {
         static let controlSize = "windowControlButtonSize"
+        static let controlAppearance = "windowControlAppearance"
         static let checksForUpdates = "checksForUpdates"
         static let updateInterval = "updateCheckInterval"
         static let automaticallyInstallsUpdates = "automaticallyInstallsUpdates"
@@ -79,8 +100,10 @@ final class AppSettings {
 
     private let defaults: UserDefaults
     private var controlSizeObservers: [UUID: (ControlSize) -> Void] = [:]
+    private var controlAppearanceObservers: [UUID: (ControlAppearance) -> Void] = [:]
 
     private(set) var controlSize: ControlSize
+    private(set) var controlAppearance: ControlAppearance
     private(set) var checksForUpdates: Bool
     private(set) var updateInterval: UpdateInterval
     private(set) var automaticallyInstallsUpdates: Bool
@@ -91,6 +114,10 @@ final class AppSettings {
         controlSize = ControlSize(
             rawValue: defaults.string(forKey: Key.controlSize) ?? ""
         ) ?? .standard
+        // 保留现有用户已经习惯的悬浮样式作为默认值；一体样式由用户主动选择。
+        controlAppearance = ControlAppearance(
+            rawValue: defaults.string(forKey: Key.controlAppearance) ?? ""
+        ) ?? .floating
         checksForUpdates = defaults.object(forKey: Key.checksForUpdates) as? Bool ?? true
         updateInterval = UpdateInterval(
             rawValue: defaults.string(forKey: Key.updateInterval) ?? ""
@@ -125,6 +152,30 @@ final class AppSettings {
     /// 解除先前注册的按钮大小监听。
     func removeControlSizeObserver(_ identifier: UUID) {
         controlSizeObservers.removeValue(forKey: identifier)
+    }
+
+    func setControlAppearance(_ newAppearance: ControlAppearance) {
+        guard controlAppearance != newAppearance else {
+            return
+        }
+        controlAppearance = newAppearance
+        defaults.set(newAppearance.rawValue, forKey: Key.controlAppearance)
+        Array(controlAppearanceObservers.values).forEach { observer in
+            observer(newAppearance)
+        }
+    }
+
+    @discardableResult
+    func addControlAppearanceObserver(
+        _ observer: @escaping (ControlAppearance) -> Void
+    ) -> UUID {
+        let identifier = UUID()
+        controlAppearanceObservers[identifier] = observer
+        return identifier
+    }
+
+    func removeControlAppearanceObserver(_ identifier: UUID) {
+        controlAppearanceObservers.removeValue(forKey: identifier)
     }
 
     func setChecksForUpdates(_ enabled: Bool) {

@@ -2,7 +2,7 @@ import AppKit
 
 /// 使用传统 macOS 偏好设置布局展示应用配置。
 ///
-/// 顶部分段控件用于切换“常规、按钮、权限、更新、关于”，所有页面共用同一个
+/// 顶部分段控件用于切换“常规、按钮、权限、更新、其他、关于”，所有页面共用同一个
 /// 分组内容框，视觉结构接近经典桌面软件设置窗口。
 final class ControlCenterViewController: NSViewController {
     private enum SettingsPage: Int, CaseIterable {
@@ -10,6 +10,7 @@ final class ControlCenterViewController: NSViewController {
         case buttons
         case permission
         case update
+        case other
         case about
 
         var title: String {
@@ -18,6 +19,7 @@ final class ControlCenterViewController: NSViewController {
             case .buttons: "按钮"
             case .permission: "权限"
             case .update: "更新"
+            case .other: "其他"
             case .about: "关于"
             }
         }
@@ -100,6 +102,10 @@ final class ControlCenterViewController: NSViewController {
         action: #selector(openLatestRelease)
     )
     private let updateStatusLabel = NSTextField(wrappingLabelWithString: "尚未检查更新")
+    private lazy var controlAppearancePopup = NSPopUpButton(
+        frame: .zero,
+        pullsDown: false
+    )
     private let pageContainer = NSView()
     private var pageViews: [NSView] = []
 
@@ -162,6 +168,7 @@ final class ControlCenterViewController: NSViewController {
             makeButtonsPage(),
             makePermissionPage(),
             makeUpdatePage(),
+            makeOtherPage(),
             makeAboutPage()
         ]
         pageViews.enumerated().forEach { index, page in
@@ -179,7 +186,7 @@ final class ControlCenterViewController: NSViewController {
         NSLayoutConstraint.activate([
             pageControl.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 12),
             pageControl.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
-            pageControl.widthAnchor.constraint(equalToConstant: 440),
+            pageControl.widthAnchor.constraint(equalToConstant: 510),
 
             contentBox.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: 16),
             contentBox.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -16),
@@ -216,6 +223,7 @@ final class ControlCenterViewController: NSViewController {
         }
         refreshLaunchAtLoginInterface()
         refreshUpdateInterface()
+        refreshAppearanceInterface()
     }
 
     /// 权限刚生效时自动启用功能并立即扫描窗口。
@@ -446,6 +454,43 @@ final class ControlCenterViewController: NSViewController {
         return pinStackToPage(stack)
     }
 
+    private func makeOtherPage() -> NSView {
+        controlAppearancePopup.addItems(
+            withTitles: AppSettings.ControlAppearance.allCases.map(\.displayName)
+        )
+        controlAppearancePopup.target = self
+        controlAppearancePopup.action = #selector(changeControlAppearance(_:))
+        controlAppearancePopup.translatesAutoresizingMaskIntoConstraints = false
+        controlAppearancePopup.widthAnchor.constraint(equalToConstant: 190).isActive = true
+
+        let appearanceRow = NSStackView(views: [
+            makeFieldLabel("控制条风格："),
+            controlAppearancePopup,
+            makeFlexibleSpacer()
+        ])
+        appearanceRow.orientation = .horizontal
+        appearanceRow.alignment = .centerY
+        appearanceRow.spacing = 10
+
+        let stack = NSStackView(views: [
+            makeSectionTitle("窗口外观"),
+            appearanceRow,
+            makeDetailLabel(
+                "“当前悬浮样式”保持原有圆角和阴影；“与窗口一体”移除底部圆角和阴影，并覆盖原窗口顶角的视觉缺口。"
+            ),
+            makeSeparator(),
+            makeSectionTitle("一体样式说明"),
+            makeDetailLabel(
+                "控制条使用标题栏材质并紧贴窗口，左侧空白区域仍可拖动窗口，最小化、最大化和关闭功能不变。"
+            )
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 14
+        appearanceRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return pinStackToPage(stack)
+    }
+
     private func makeAboutPage() -> NSView {
         let iconView = NSImageView(image: NSApp.applicationIconImage)
         iconView.imageScaling = .scaleProportionallyUpOrDown
@@ -665,6 +710,14 @@ final class ControlCenterViewController: NSViewController {
         updateStatusLabel.stringValue = updateManager.statusText
     }
 
+    private func refreshAppearanceInterface() {
+        if let index = AppSettings.ControlAppearance.allCases.firstIndex(
+            of: appSettings.controlAppearance
+        ) {
+            controlAppearancePopup.selectItem(at: index)
+        }
+    }
+
     @objc private func selectSettingsPage(_ sender: NSSegmentedControl) {
         guard SettingsPage(rawValue: sender.selectedSegment) != nil else {
             return
@@ -772,6 +825,14 @@ final class ControlCenterViewController: NSViewController {
 
     @objc private func openLatestRelease() {
         updateManager.openLatestReleasePage()
+    }
+
+    @objc private func changeControlAppearance(_ sender: NSPopUpButton) {
+        let appearances = AppSettings.ControlAppearance.allCases
+        guard appearances.indices.contains(sender.indexOfSelectedItem) else {
+            return
+        }
+        appSettings.setControlAppearance(appearances[sender.indexOfSelectedItem])
     }
 
     @objc private func changeControlSize(_ sender: NSSegmentedControl) {

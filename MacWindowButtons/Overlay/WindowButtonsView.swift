@@ -10,6 +10,7 @@ final class WindowButtonsView: NSVisualEffectView {
     var onEmptyAreaDragEnded: (() -> Void)?
     private var buttonWidthConstraints: [NSLayoutConstraint] = []
     private var buttonHeightConstraints: [NSLayoutConstraint] = []
+    private var controlSize: AppSettings.ControlSize = .standard
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -78,6 +79,7 @@ final class WindowButtonsView: NSVisualEffectView {
 
     /// 同步三个按钮真实宽高和图标点大小，整个矩形都是鼠标命中区域。
     func applyControlSize(_ controlSize: AppSettings.ControlSize) {
+        self.controlSize = controlSize
         buttonWidthConstraints.forEach { constraint in
             constraint.constant = controlSize.buttonWidth
         }
@@ -87,6 +89,30 @@ final class WindowButtonsView: NSVisualEffectView {
         minimizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         maximizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         closeButton.updateSymbolPointSize(controlSize.symbolPointSize)
+        layer?.cornerRadius = controlSize == .large ? 8 : 7
+    }
+
+    /// 切换当前悬浮外观和贴合目标窗口的标题栏外观。
+    func applyAppearance(_ appearance: AppSettings.ControlAppearance) {
+        switch appearance {
+        case .floating:
+            material = .hudWindow
+            layer?.maskedCorners = [
+                .layerMinXMinYCorner,
+                .layerMaxXMinYCorner,
+                .layerMinXMaxYCorner,
+                .layerMaxXMaxYCorner
+            ]
+        case .integrated:
+            // 标题栏材质会跟随系统浅色/深色外观；仅保留顶部圆角，底部使用直角
+            // 与目标窗口重叠，视觉上形成一个连续的窗口外框。
+            material = .titlebar
+            layer?.maskedCorners = [
+                .layerMinXMaxYCorner,
+                .layerMaxXMaxYCorner
+            ]
+        }
+        layer?.cornerCurve = .continuous
         layer?.cornerRadius = controlSize == .large ? 8 : 7
     }
 }

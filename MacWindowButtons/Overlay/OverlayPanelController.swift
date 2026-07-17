@@ -130,6 +130,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private var currentWindow: TargetWindow?
     private var lastExternalWindow: TargetWindow?
     private var settingsObserverIdentifier: UUID?
+    private var appearanceObserverIdentifier: UUID?
     private var workspaceObserver: NSObjectProtocol?
     private var dragWindow: TargetWindow?
     private var dragStartMouseLocation: CGPoint?
@@ -166,14 +167,22 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         configurePanel()
         configureActions()
         applyControlSize(appSettings.controlSize)
+        applyControlAppearance(appSettings.controlAppearance)
         settingsObserverIdentifier = appSettings.addControlSizeObserver { [weak self] controlSize in
             self?.applyControlSize(controlSize)
+        }
+        appearanceObserverIdentifier = appSettings.addControlAppearanceObserver {
+            [weak self] appearance in
+            self?.applyControlAppearance(appearance)
         }
     }
 
     deinit {
         if let settingsObserverIdentifier {
             appSettings.removeControlSizeObserver(settingsObserverIdentifier)
+        }
+        if let appearanceObserverIdentifier {
+            appSettings.removeControlAppearanceObserver(appearanceObserverIdentifier)
         }
         stop()
     }
@@ -324,7 +333,12 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             height: appSettings.controlSize.buttonHeight
         )
         panel.setContentSize(overlaySize)
-        panel.setFrameOrigin(CGPoint(x: appKitFrame.minX, y: appKitFrame.maxY))
+        panel.setFrameOrigin(
+            CGPoint(
+                x: appKitFrame.minX,
+                y: appKitFrame.maxY - appSettings.controlAppearance.windowOverlap
+            )
+        )
         buttonsView.frame = CGRect(origin: .zero, size: overlaySize)
         panel.orderFrontRegardless()
     }
@@ -368,7 +382,9 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         panel.setFrameOrigin(
             CGPoint(
                 x: dragStartAppKitFrame.minX + delta.x,
-                y: dragStartAppKitFrame.maxY + delta.y
+                y: dragStartAppKitFrame.maxY
+                    + delta.y
+                    - appSettings.controlAppearance.windowOverlap
             )
         )
     }
@@ -396,7 +412,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         }
         _ = actionService.toggleMaximize(
             currentWindow,
-            reservedTopHeight: appSettings.controlSize.buttonHeight
+            reservedTopHeight: reservedTopHeight
         )
         refreshOverlayAfterAction()
     }
@@ -422,9 +438,30 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         if let currentWindow {
             _ = actionService.updateReservedTopSpace(
                 for: currentWindow,
-                reservedTopHeight: controlSize.buttonHeight
+                reservedTopHeight: reservedTopHeight
             )
         }
         refreshOverlay()
+    }
+
+    private func applyControlAppearance(_ appearance: AppSettings.ControlAppearance) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        buttonsView.applyAppearance(appearance)
+        panel.hasShadow = appearance == .floating
+        if let currentWindow {
+            _ = actionService.updateReservedTopSpace(
+                for: currentWindow,
+                reservedTopHeight: reservedTopHeight
+            )
+        }
+        refreshOverlay()
+    }
+
+    private var reservedTopHeight: CGFloat {
+        max(
+            0,
+            appSettings.controlSize.buttonHeight
+                - appSettings.controlAppearance.windowOverlap
+        )
     }
 }
