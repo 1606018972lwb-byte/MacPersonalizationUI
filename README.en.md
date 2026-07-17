@@ -2,9 +2,10 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Release 1.1 includes:
+Local test version 1.2.1 builds on release 1.1 with a redesigned preferences window:
 
 - Accessibility permission prompting and a System Settings shortcut.
+- A classic macOS preferences layout with General, Buttons, Permission, and About tabs.
 - Focused-window discovery through `AXUIElement`.
 - A non-activating translucent `NSPanel` that follows the focused window.
 - An always-visible row matching the target window width, with an empty left placeholder and the three controls aligned right.

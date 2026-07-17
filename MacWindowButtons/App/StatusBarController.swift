@@ -31,8 +31,8 @@ final class StatusBarController: NSObject {
             windowRefresher: windowRefresher
         )
         controlCenterWindow = NSWindow(
-            contentRect: CGRect(origin: .zero, size: CGSize(width: 340, height: 420)),
-            styleMask: [.titled, .closable, .fullSizeContentView],
+            contentRect: CGRect(origin: .zero, size: CGSize(width: 640, height: 410)),
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
@@ -63,12 +63,13 @@ final class StatusBarController: NSObject {
     }
 
     private func configureControlCenterWindow() {
-        controlCenterWindow.title = "MacWindowButtons"
-        controlCenterWindow.titleVisibility = .hidden
-        controlCenterWindow.titlebarAppearsTransparent = true
+        controlCenterWindow.title = "MacWindowButtons 设置"
+        controlCenterWindow.titleVisibility = .visible
+        controlCenterWindow.titlebarAppearsTransparent = false
+        controlCenterWindow.appearance = NSAppearance(named: .darkAqua)
         controlCenterWindow.isReleasedWhenClosed = false
         controlCenterWindow.hidesOnDeactivate = false
-        controlCenterWindow.isMovableByWindowBackground = true
+        controlCenterWindow.isMovableByWindowBackground = false
         // 主界面使用普通窗口层级，可由菜单栏图标或再次双击应用置前。
         controlCenterWindow.level = .normal
         controlCenterWindow.collectionBehavior = [.moveToActiveSpace]
