@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-本地测试版本 1.1.3 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
+正式版本 1.1 已完成可操作的右侧窗口控制条、可视化控制中心和原创应用图标：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -45,7 +45,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.1.3.dmg`。
+1. 下载并打开发行版中的 `MacWindowButtons-1.1.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在控制中心点击“立即授权”。
