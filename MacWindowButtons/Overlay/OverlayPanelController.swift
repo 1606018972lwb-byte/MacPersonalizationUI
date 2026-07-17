@@ -254,7 +254,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         hideOverlay()
     }
 
-    /// 扫描全部普通应用窗口，并立即为最近的外部目标窗口显示三个控件。
+    /// 扫描全部普通应用窗口；控制中心在前台时只返回结果，不让浮层遮住设置窗口。
     func refreshAllWindows() -> WindowRefreshResult {
         dispatchPrecondition(condition: .onQueue(.main))
         applicationState.enableWindowButtons()
@@ -266,7 +266,11 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             }
         } ?? discoveredWindows.first
 
-        if let preferredWindow {
+        if isOwnApplicationFrontmost {
+            currentWindow = nil
+            windowTracker.stop()
+            hideOverlay()
+        } else if let preferredWindow {
             displayOverlay(for: preferredWindow)
         } else {
             currentWindow = nil
@@ -323,14 +327,16 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             return
         }
 
+        // 控制中心属于本应用，不是窗口增强的目标。浮层使用 floating 层级，如果继续
+        // 显示最近的外部窗口，会像截图中那样横穿设置窗口，造成“定位不准”的错觉。
+        guard !isOwnApplicationFrontmost else {
+            currentWindow = nil
+            windowTracker.stop()
+            hideOverlay()
+            return
+        }
+
         guard let targetWindow = windowManager.focusedWindow() else {
-            // 控制中心成为前台时继续展示最近的外部窗口，避免手动刷新结果被定时器立刻隐藏。
-            if NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-                == Bundle.main.bundleIdentifier,
-               let lastExternalWindow {
-                displayOverlay(for: lastExternalWindow)
-                return
-            }
             currentWindow = nil
             windowTracker.stop()
             hideOverlay()
@@ -579,5 +585,10 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             appSettings.controlSize.buttonHeight
                 - appSettings.controlAppearance.windowOverlap
         )
+    }
+
+    private var isOwnApplicationFrontmost: Bool {
+        NSWorkspace.shared.frontmostApplication?.processIdentifier
+            == ProcessInfo.processInfo.processIdentifier
     }
 }
