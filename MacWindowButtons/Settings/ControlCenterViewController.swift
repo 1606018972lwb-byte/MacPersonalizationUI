@@ -88,7 +88,7 @@ private final class PreferenceDisclosureSection: NSStackView {
 
 /// 使用传统 macOS 偏好设置布局展示应用配置。
 ///
-/// 顶部分段控件用于切换“常规、权限、更新、其他、关于”，所有页面共用同一个
+/// 顶部分段控件用于切换“常规、权限、更新、其他、快捷键、关于”，所有页面共用同一个
 /// 分组内容框，视觉结构接近经典桌面软件设置窗口。
 final class ControlCenterViewController: NSViewController {
     private enum SettingsPage: Int, CaseIterable {
@@ -96,6 +96,7 @@ final class ControlCenterViewController: NSViewController {
         case permission
         case update
         case other
+        case shortcuts
         case about
 
         var title: String {
@@ -104,6 +105,7 @@ final class ControlCenterViewController: NSViewController {
             case .permission: "权限"
             case .update: "更新"
             case .other: "其他"
+            case .shortcuts: "快捷键"
             case .about: "关于"
             }
         }
@@ -186,6 +188,12 @@ final class ControlCenterViewController: NSViewController {
         action: #selector(openLatestRelease)
     )
     private let updateStatusLabel = NSTextField(wrappingLabelWithString: "尚未检查更新")
+    private lazy var deleteToTrashCheckbox = NSButton(
+        checkboxWithTitle: "按 Delete 移动文件到废纸篓",
+        target: self,
+        action: #selector(toggleDeleteToTrashShortcut(_:))
+    )
+    private let deleteToTrashStatusLabel = NSTextField(wrappingLabelWithString: "")
     private lazy var controlAppearancePopup = NSPopUpButton(
         frame: .zero,
         pullsDown: false
@@ -257,6 +265,7 @@ final class ControlCenterViewController: NSViewController {
             makePermissionPage(),
             makeUpdatePage(),
             makeOtherPage(),
+            makeShortcutsPage(),
             makeAboutPage()
         ]
         pageViews.enumerated().forEach { index, page in
@@ -274,7 +283,7 @@ final class ControlCenterViewController: NSViewController {
         NSLayoutConstraint.activate([
             pageControl.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 12),
             pageControl.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
-            pageControl.widthAnchor.constraint(equalToConstant: 440),
+            pageControl.widthAnchor.constraint(equalToConstant: 510),
 
             contentBox.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: 16),
             contentBox.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -16),
@@ -312,6 +321,7 @@ final class ControlCenterViewController: NSViewController {
         refreshLaunchAtLoginInterface()
         refreshUpdateInterface()
         refreshAppearanceInterface()
+        refreshShortcutInterface()
         refreshGeneralSectionSummaries()
     }
 
@@ -559,6 +569,30 @@ final class ControlCenterViewController: NSViewController {
         return pinStackToPage(stack)
     }
 
+    private func makeShortcutsPage() -> NSView {
+        deleteToTrashCheckbox.font = .systemFont(ofSize: 13)
+        deleteToTrashStatusLabel.font = .systemFont(ofSize: 11)
+        deleteToTrashStatusLabel.textColor = .secondaryLabelColor
+        deleteToTrashStatusLabel.maximumNumberOfLines = 3
+
+        let stack = NSStackView(views: [
+            makeSectionTitle("Finder 文件操作"),
+            deleteToTrashCheckbox,
+            makeDetailLabel(
+                "启用后，在 Finder 中选中文件并单独按下 Delete，即可使用 Finder 原生方式移到废纸篓。"
+            ),
+            deleteToTrashStatusLabel,
+            makeSeparator(),
+            makeDetailLabel(
+                "此快捷键只在 Finder 位于最前方时生效，不会改变其他应用中的 Delete 按键。"
+            )
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 12
+        return pinStackToPage(stack)
+    }
+
     private func makeAboutPage() -> NSView {
         let iconView = NSImageView(image: NSApp.applicationIconImage)
         iconView.imageScaling = .scaleProportionallyUpOrDown
@@ -786,6 +820,20 @@ final class ControlCenterViewController: NSViewController {
         }
     }
 
+    private func refreshShortcutInterface() {
+        deleteToTrashCheckbox.state = appSettings.deleteMovesFilesToTrash ? .on : .off
+        if !appSettings.deleteMovesFilesToTrash {
+            deleteToTrashStatusLabel.stringValue = "默认关闭，勾选后立即启用。"
+            deleteToTrashStatusLabel.textColor = .secondaryLabelColor
+        } else if permissionManager.isTrusted {
+            deleteToTrashStatusLabel.stringValue = "已启用：Finder 中按 Delete 会将选中文件移到废纸篓。"
+            deleteToTrashStatusLabel.textColor = .systemGreen
+        } else {
+            deleteToTrashStatusLabel.stringValue = "已启用，但需要辅助功能权限才能监听全局按键。"
+            deleteToTrashStatusLabel.textColor = .systemOrange
+        }
+    }
+
     /// 更新常规页每一行右侧的简要状态，让用户无需展开也能了解当前配置。
     private func refreshGeneralSectionSummaries() {
         if permissionManager.isTrusted {
@@ -934,6 +982,15 @@ final class ControlCenterViewController: NSViewController {
             return
         }
         appSettings.setControlAppearance(appearances[sender.indexOfSelectedItem])
+    }
+
+    @objc private func toggleDeleteToTrashShortcut(_ sender: NSButton) {
+        let enabled = sender.state == .on
+        appSettings.setDeleteMovesFilesToTrash(enabled)
+        refreshShortcutInterface()
+        if enabled && !permissionManager.isTrusted {
+            permissionManager.requestPermissionFromUser()
+        }
     }
 
     @objc private func changeControlSize(_ sender: NSSegmentedControl) {

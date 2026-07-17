@@ -96,11 +96,13 @@ final class AppSettings {
         static let updateInterval = "updateCheckInterval"
         static let automaticallyInstallsUpdates = "automaticallyInstallsUpdates"
         static let lastUpdateCheckDate = "lastUpdateCheckDate"
+        static let deleteMovesFilesToTrash = "deleteMovesFilesToTrash"
     }
 
     private let defaults: UserDefaults
     private var controlSizeObservers: [UUID: (ControlSize) -> Void] = [:]
     private var controlAppearanceObservers: [UUID: (ControlAppearance) -> Void] = [:]
+    private var deleteShortcutObservers: [UUID: (Bool) -> Void] = [:]
 
     private(set) var controlSize: ControlSize
     private(set) var controlAppearance: ControlAppearance
@@ -108,6 +110,7 @@ final class AppSettings {
     private(set) var updateInterval: UpdateInterval
     private(set) var automaticallyInstallsUpdates: Bool
     private(set) var lastUpdateCheckDate: Date?
+    private(set) var deleteMovesFilesToTrash: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -130,6 +133,10 @@ final class AppSettings {
         automaticallyInstallsUpdates = checksForUpdates
             && (savedAutomaticUpdate ?? true)
         lastUpdateCheckDate = defaults.object(forKey: Key.lastUpdateCheckDate) as? Date
+        // Delete 是具有破坏性的全局操作，新安装必须由用户明确勾选后才启用。
+        deleteMovesFilesToTrash = defaults.object(
+            forKey: Key.deleteMovesFilesToTrash
+        ) as? Bool ?? false
     }
 
     /// 保存按钮大小，并通知菜单和悬浮面板立即刷新。
@@ -203,6 +210,29 @@ final class AppSettings {
     func markUpdateCheckCompleted(at date: Date = Date()) {
         lastUpdateCheckDate = date
         defaults.set(date, forKey: Key.lastUpdateCheckDate)
+    }
+
+    /// 保存 Finder Delete 快捷键状态，并通知全局键盘监听立即启用或停止。
+    func setDeleteMovesFilesToTrash(_ enabled: Bool) {
+        guard deleteMovesFilesToTrash != enabled else {
+            return
+        }
+        deleteMovesFilesToTrash = enabled
+        defaults.set(enabled, forKey: Key.deleteMovesFilesToTrash)
+        Array(deleteShortcutObservers.values).forEach { observer in
+            observer(enabled)
+        }
+    }
+
+    @discardableResult
+    func addDeleteShortcutObserver(_ observer: @escaping (Bool) -> Void) -> UUID {
+        let identifier = UUID()
+        deleteShortcutObservers[identifier] = observer
+        return identifier
+    }
+
+    func removeDeleteShortcutObserver(_ identifier: UUID) {
+        deleteShortcutObservers.removeValue(forKey: identifier)
     }
 
 }

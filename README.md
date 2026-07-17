@@ -4,14 +4,17 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-测试版本 1.4.1 基于正式版本 1.3，进一步整理设置界面的信息层级：
+测试版本 1.4.2 基于正式版本 1.3，增加 Finder 文件快捷操作并继续整理设置界面：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
-- 设置窗口采用传统 macOS 偏好设置风格，通过“常规 / 权限 / 更新 / 其他 / 关于”标签分类功能。
+- 设置窗口采用传统 macOS 偏好设置风格，通过“常规 / 权限 / 更新 / 其他 / 快捷键 / 关于”标签分类功能。
 - 原“按钮”页已合并到“常规”页；窗口控制、按钮大小、开机启动和窗口扫描均以单行设置显示。
 - 常规页使用互斥折叠详情：点击某项只展开该项的详细控件，并自动收起上一个设置。
 - 每个折叠行右侧实时显示当前状态摘要，例如权限、启用状态、按钮大小、登录项状态和扫描窗口数。
+- 新增“快捷键”页，“按 Delete 移动文件到废纸篓”默认关闭，可通过复选框明确启用。
+- Delete 快捷键只在 Finder 位于最前方时生效，并转换为 Finder 原生的 `Command-Delete`，支持系统撤销操作。
+- 长按 Delete 只执行一次，避免按键重复连续移动 Finder 后续选中的文件；其他应用中的 Delete 不受影响。
 - “其他”页可通过下拉框选择“当前悬浮样式”或“与窗口一体”；默认继续使用当前悬浮样式。
 - 一体样式使用标题栏材质，移除控制条底部圆角和阴影，并向下覆盖原窗口顶部 5pt，填平两个窗口圆角之间的视觉缺口。
 - 切换外观后立即生效并保存；最大化窗口的顶部预留高度会同步校正。
@@ -63,7 +66,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.1.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.2.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
@@ -76,6 +79,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 11. 如需开机启动，在“常规”页勾选“登录时自动启动”；若出现橙色提示，请按按钮进入系统设置批准登录项。
 12. 在“更新”页可以设置检查周期、手动检查及自动安装。自动安装完成后应用会自动重启。
 13. 在“其他”页选择“与窗口一体”，可以取消控制条下方圆角与阴影，让它更像原窗口的一部分。
+14. 如需在 Finder 中单按 Delete 删除文件，请在“快捷键”页勾选对应选项；该功能需要辅助功能权限。
 
 从旧的临时签名版本升级时，如果系统设置里的开关显示开启但应用仍提示缺少权限，请点击主界面的“重新授权”，然后在系统设置中重新开启一次。1.9 之后通过项目脚本生成的测试包使用稳定权限身份。
 
@@ -95,7 +99,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 8. `AppSettings` 使用 `UserDefaults` 保存按钮大小、更新开关、检查周期和上次检查时间。
 9. `LaunchAtLoginController` 通过 `SMAppService.mainApp` 注册登录项并处理系统批准状态。
 10. `UpdateManager` 查询 GitHub/Gitee Release、比较语义版本，并负责经过安全校验的 DMG 更新流程。
-11. `ControlCenterViewController` 使用纯 AppKit 构建常规折叠设置以及权限、更新、其他和关于页面。
+11. `ControlCenterViewController` 使用纯 AppKit 构建常规折叠设置以及权限、更新、其他、快捷键和关于页面。
+12. `DeleteToTrashShortcutController` 使用事件监听把 Finder 中的单独 Delete 安全转换为原生 `Command-Delete`。
 
 ## 项目目录
 
@@ -104,7 +109,8 @@ MacWindowButtons/
 ├── App/
 │   ├── AppDelegate.swift
 │   ├── StatusBarController.swift
-│   └── ApplicationState.swift
+│   ├── ApplicationState.swift
+│   └── DeleteToTrashShortcutController.swift
 ├── Accessibility/
 │   ├── AccessibilityPermissionManager.swift
 │   ├── AccessibilityWindowManager.swift
