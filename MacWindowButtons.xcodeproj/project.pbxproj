@@ -26,6 +26,7 @@
 		A10000000000000000000017 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000020 /* LaunchAtLoginController.swift */; };
 		A10000000000000000000018 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* UpdateManager.swift */; };
 		A10000000000000000000019 /* DeleteToTrashShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* DeleteToTrashShortcutController.swift */; };
+		A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* InputMethodShortcutController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -51,6 +52,7 @@
 		A20000000000000000000020 /* LaunchAtLoginController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginController.swift; sourceTree = "<group>"; };
 		A20000000000000000000021 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		A20000000000000000000022 /* DeleteToTrashShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteToTrashShortcutController.swift; sourceTree = "<group>"; };
+		A20000000000000000000023 /* InputMethodShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodShortcutController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +112,7 @@
 				A20000000000000000000002 /* StatusBarController.swift */,
 				A20000000000000000000003 /* ApplicationState.swift */,
 				A20000000000000000000022 /* DeleteToTrashShortcutController.swift */,
+				A20000000000000000000023 /* InputMethodShortcutController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -260,6 +263,7 @@
 				A10000000000000000000017 /* LaunchAtLoginController.swift in Sources */,
 				A10000000000000000000018 /* UpdateManager.swift in Sources */,
 				A10000000000000000000019 /* DeleteToTrashShortcutController.swift in Sources */,
+				A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -306,13 +310,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.4.5;
+				MARKETING_VERSION = 1.4.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -325,13 +329,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.4.5;
+				MARKETING_VERSION = 1.4.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

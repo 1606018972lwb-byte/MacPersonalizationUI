@@ -23,6 +23,7 @@ final class StatusBarController: NSObject {
         appSettings: AppSettings,
         launchAtLoginController: LaunchAtLoginController,
         updateManager: UpdateManager,
+        inputMethodShortcutController: InputMethodShortcutController,
         windowRefresher: WindowOverlayRefreshing
     ) {
         self.permissionManager = permissionManager
@@ -34,10 +35,11 @@ final class StatusBarController: NSObject {
             appSettings: appSettings,
             launchAtLoginController: launchAtLoginController,
             updateManager: updateManager,
+            inputMethodShortcutController: inputMethodShortcutController,
             windowRefresher: windowRefresher
         )
         controlCenterWindow = NSWindow(
-            contentRect: CGRect(origin: .zero, size: CGSize(width: 640, height: 410)),
+            contentRect: CGRect(origin: .zero, size: CGSize(width: 640, height: 500)),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false

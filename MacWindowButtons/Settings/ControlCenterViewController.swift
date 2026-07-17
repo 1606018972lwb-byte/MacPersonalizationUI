@@ -1,5 +1,63 @@
 import AppKit
 
+/// 点击后直接记录下一次带修饰键的物理按键组合。
+private final class ShortcutRecorderButton: NSButton {
+    var onShortcutRecorded: ((GlobalKeyboardShortcut) -> Void)?
+    private var savedShortcut: GlobalKeyboardShortcut?
+
+    init() {
+        super.init(frame: .zero)
+        title = "点击录入"
+        bezelStyle = .rounded
+        target = self
+        action = #selector(beginRecording)
+        focusRingType = .exterior
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+
+    func show(_ shortcut: GlobalKeyboardShortcut?) {
+        savedShortcut = shortcut
+        title = shortcut?.displayName ?? "点击录入"
+    }
+
+    @objc private func beginRecording() {
+        window?.makeFirstResponder(self)
+        title = "请按组合键…"
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 {
+            show(savedShortcut)
+            window?.makeFirstResponder(nil)
+            return
+        }
+        let modifiers = event.modifierFlags.intersection([
+            .command,
+            .option,
+            .control,
+            .shift
+        ])
+        guard !modifiers.isEmpty else {
+            NSSound.beep()
+            title = "需要修饰键"
+            return
+        }
+        let shortcut = GlobalKeyboardShortcut(
+            keyCode: UInt32(event.keyCode),
+            modifierFlags: modifiers.rawValue
+        )
+        title = shortcut.displayName
+        window?.makeFirstResponder(nil)
+        onShortcutRecorded?(shortcut)
+    }
+}
+
 /// 使用传统 macOS 偏好设置布局展示应用配置。
 ///
 /// 顶部分段控件用于切换“常规、权限、更新、其他、快捷键、关于”，所有页面共用同一个
@@ -30,6 +88,7 @@ final class ControlCenterViewController: NSViewController {
     private let appSettings: AppSettings
     private let launchAtLoginController: LaunchAtLoginController
     private let updateManager: UpdateManager
+    private let inputMethodShortcutController: InputMethodShortcutController
     private weak var windowRefresher: WindowOverlayRefreshing?
 
     private let permissionBox = NSBox()
@@ -108,6 +167,25 @@ final class ControlCenterViewController: NSViewController {
         action: #selector(toggleDeleteToTrashShortcut(_:))
     )
     private let deleteToTrashStatusLabel = NSTextField(wrappingLabelWithString: "")
+    private lazy var openKeyboardShortcutsButton = NSButton(
+        title: "打开键盘快捷键设置…",
+        target: self,
+        action: #selector(openKeyboardShortcutSettings)
+    )
+    private lazy var inputMethodShortcutCheckbox = NSButton(
+        checkboxWithTitle: "启用",
+        target: self,
+        action: #selector(toggleInputMethodShortcut(_:))
+    )
+    private lazy var chineseEnglishShortcutCheckbox = NSButton(
+        checkboxWithTitle: "启用",
+        target: self,
+        action: #selector(toggleChineseEnglishShortcut(_:))
+    )
+    private let inputMethodShortcutRecorder = ShortcutRecorderButton()
+    private let chineseEnglishShortcutRecorder = ShortcutRecorderButton()
+    private let inputMethodShortcutStatusLabel = NSTextField(wrappingLabelWithString: "")
+    private let chineseEnglishShortcutStatusLabel = NSTextField(wrappingLabelWithString: "")
     private lazy var controlAppearancePopup = NSPopUpButton(
         frame: .zero,
         pullsDown: false
@@ -121,6 +199,7 @@ final class ControlCenterViewController: NSViewController {
         appSettings: AppSettings,
         launchAtLoginController: LaunchAtLoginController,
         updateManager: UpdateManager,
+        inputMethodShortcutController: InputMethodShortcutController,
         windowRefresher: WindowOverlayRefreshing
     ) {
         self.applicationState = applicationState
@@ -128,12 +207,16 @@ final class ControlCenterViewController: NSViewController {
         self.appSettings = appSettings
         self.launchAtLoginController = launchAtLoginController
         self.updateManager = updateManager
+        self.inputMethodShortcutController = inputMethodShortcutController
         self.windowRefresher = windowRefresher
         super.init(nibName: nil, bundle: nil)
         updateManager.onStateChange = { [weak self] in
             self?.refreshUpdateInterface()
         }
-        preferredContentSize = CGSize(width: 640, height: 410)
+        inputMethodShortcutController.onStateChange = { [weak self] in
+            self?.refreshShortcutInterface()
+        }
+        preferredContentSize = CGSize(width: 640, height: 500)
     }
 
     @available(*, unavailable)
@@ -432,26 +515,84 @@ final class ControlCenterViewController: NSViewController {
     }
 
     private func makeShortcutsPage() -> NSView {
+        openKeyboardShortcutsButton.bezelStyle = .rounded
+        openKeyboardShortcutsButton.image = NSImage(
+            systemSymbolName: "keyboard",
+            accessibilityDescription: "键盘快捷键设置"
+        )
+        openKeyboardShortcutsButton.imagePosition = .imageLeading
+
         deleteToTrashCheckbox.font = .systemFont(ofSize: 13)
         deleteToTrashStatusLabel.font = .systemFont(ofSize: 11)
         deleteToTrashStatusLabel.textColor = .secondaryLabelColor
-        deleteToTrashStatusLabel.maximumNumberOfLines = 3
+        deleteToTrashStatusLabel.maximumNumberOfLines = 2
+        for label in [inputMethodShortcutStatusLabel, chineseEnglishShortcutStatusLabel] {
+            label.font = .systemFont(ofSize: 11)
+            label.textColor = .secondaryLabelColor
+            label.maximumNumberOfLines = 2
+        }
+        for recorder in [inputMethodShortcutRecorder, chineseEnglishShortcutRecorder] {
+            recorder.translatesAutoresizingMaskIntoConstraints = false
+            recorder.widthAnchor.constraint(equalToConstant: 170).isActive = true
+        }
+        inputMethodShortcutRecorder.onShortcutRecorded = { [weak self] shortcut in
+            self?.recordShortcut(shortcut, for: .nextInputMethod)
+        }
+        chineseEnglishShortcutRecorder.onShortcutRecorded = { [weak self] shortcut in
+            self?.recordShortcut(shortcut, for: .toggleChineseEnglish)
+        }
+
+        func shortcutRow(
+            checkbox: NSButton,
+            title: String,
+            recorder: ShortcutRecorderButton
+        ) -> NSStackView {
+            let row = NSStackView(views: [
+                checkbox,
+                makeFieldLabel(title),
+                makeFlexibleSpacer(),
+                recorder
+            ])
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.spacing = 10
+            return row
+        }
+        let inputMethodRow = shortcutRow(
+            checkbox: inputMethodShortcutCheckbox,
+            title: "切换输入法",
+            recorder: inputMethodShortcutRecorder
+        )
+        let chineseEnglishRow = shortcutRow(
+            checkbox: chineseEnglishShortcutCheckbox,
+            title: "切换中英文",
+            recorder: chineseEnglishShortcutRecorder
+        )
 
         let stack = NSStackView(views: [
+            makeSectionTitle("系统快捷键"),
+            openKeyboardShortcutsButton,
+            makeDetailLabel("打开 macOS“系统设置 → 键盘 → 键盘快捷键”。"),
+            makeSeparator(),
+            makeSectionTitle("输入法"),
+            inputMethodRow,
+            inputMethodShortcutStatusLabel,
+            chineseEnglishRow,
+            chineseEnglishShortcutStatusLabel,
+            makeDetailLabel("点击录入框后按组合键；录入时会检查系统、其他应用以及本页快捷键冲突。"),
+            makeSeparator(),
             makeSectionTitle("Finder 文件操作"),
             deleteToTrashCheckbox,
             makeDetailLabel(
                 "启用后，在 Finder 中选中文件并单独按下 Delete，即可使用 Finder 原生方式移到废纸篓。"
             ),
-            deleteToTrashStatusLabel,
-            makeSeparator(),
-            makeDetailLabel(
-                "此快捷键只在 Finder 位于最前方时生效，不会改变其他应用中的 Delete 按键。"
-            )
+            deleteToTrashStatusLabel
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 12
+        stack.spacing = 8
+        inputMethodRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        chineseEnglishRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         return pinStackToPage(stack)
     }
 
@@ -683,6 +824,29 @@ final class ControlCenterViewController: NSViewController {
     }
 
     private func refreshShortcutInterface() {
+        guard isViewLoaded else {
+            return
+        }
+
+        inputMethodShortcutCheckbox.state = appSettings.isInputMethodShortcutEnabled
+            ? .on
+            : .off
+        chineseEnglishShortcutCheckbox.state = appSettings.isChineseEnglishShortcutEnabled
+            ? .on
+            : .off
+        inputMethodShortcutRecorder.show(appSettings.inputMethodShortcut)
+        chineseEnglishShortcutRecorder.show(appSettings.chineseEnglishShortcut)
+        updateShortcutStatus(
+            inputMethodShortcutStatusLabel,
+            action: .nextInputMethod,
+            enabled: appSettings.isInputMethodShortcutEnabled
+        )
+        updateShortcutStatus(
+            chineseEnglishShortcutStatusLabel,
+            action: .toggleChineseEnglish,
+            enabled: appSettings.isChineseEnglishShortcutEnabled
+        )
+
         deleteToTrashCheckbox.state = appSettings.deleteMovesFilesToTrash ? .on : .off
         if !appSettings.deleteMovesFilesToTrash {
             deleteToTrashStatusLabel.stringValue = "默认关闭，勾选后立即启用。"
@@ -693,6 +857,22 @@ final class ControlCenterViewController: NSViewController {
         } else {
             deleteToTrashStatusLabel.stringValue = "已启用，但需要辅助功能权限才能监听全局按键。"
             deleteToTrashStatusLabel.textColor = .systemOrange
+        }
+    }
+
+    private func updateShortcutStatus(
+        _ label: NSTextField,
+        action: InputMethodShortcutController.Action,
+        enabled: Bool
+    ) {
+        let status = inputMethodShortcutController.statusText(for: action)
+        label.stringValue = status
+        if status.contains("冲突") || status.contains("占用") || status.contains("错误") {
+            label.textColor = .systemOrange
+        } else if enabled {
+            label.textColor = .systemGreen
+        } else {
+            label.textColor = .secondaryLabelColor
         }
     }
 
@@ -820,6 +1000,89 @@ final class ControlCenterViewController: NSViewController {
         if enabled && !permissionManager.isTrusted {
             permissionManager.requestPermissionFromUser()
         }
+    }
+
+    @objc private func openKeyboardShortcutSettings() {
+        let workspace = NSWorkspace.shared
+        let urls = [
+            "x-apple.systempreferences:com.apple.Keyboard-Settings.extension?KeyboardShortcuts",
+            "x-apple.systempreferences:com.apple.preference.keyboard?Shortcuts"
+        ]
+        for text in urls {
+            if let url = URL(string: text), workspace.open(url) {
+                return
+            }
+        }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "无法打开键盘快捷键设置"
+        alert.informativeText = "请手动打开“系统设置 → 键盘 → 键盘快捷键”。"
+        alert.runModal()
+    }
+
+    @objc private func toggleInputMethodShortcut(_ sender: NSButton) {
+        setShortcutEnabled(
+            sender.state == .on,
+            action: .nextInputMethod,
+            checkbox: sender
+        )
+    }
+
+    @objc private func toggleChineseEnglishShortcut(_ sender: NSButton) {
+        setShortcutEnabled(
+            sender.state == .on,
+            action: .toggleChineseEnglish,
+            checkbox: sender
+        )
+    }
+
+    private func setShortcutEnabled(
+        _ enabled: Bool,
+        action: InputMethodShortcutController.Action,
+        checkbox: NSButton
+    ) {
+        let result = inputMethodShortcutController.setEnabled(enabled, for: action)
+        guard case .success = result else {
+            checkbox.state = .off
+            showShortcutRegistrationAlert(result)
+            refreshShortcutInterface()
+            return
+        }
+        refreshShortcutInterface()
+    }
+
+    private func recordShortcut(
+        _ shortcut: GlobalKeyboardShortcut,
+        for action: InputMethodShortcutController.Action
+    ) {
+        let result = inputMethodShortcutController.updateShortcut(shortcut, for: action)
+        if case .success = result {
+            refreshShortcutInterface()
+            return
+        }
+        showShortcutRegistrationAlert(result)
+        refreshShortcutInterface()
+    }
+
+    private func showShortcutRegistrationAlert(
+        _ result: InputMethodShortcutController.RegistrationResult
+    ) {
+        let detail: String
+        switch result {
+        case .success:
+            return
+        case .missingShortcut:
+            detail = "请先点击右侧录入框，然后按下带 Command、Option、Control 或 Shift 的组合键。"
+        case .conflict:
+            detail = "这个组合键已被 macOS、其他应用或本页另一个功能占用，请换一个组合键。"
+        case let .failed(message):
+            detail = message
+        }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "无法使用此快捷键"
+        alert.informativeText = detail
+        alert.runModal()
     }
 
     @objc private func changeControlSize(_ sender: NSSegmentedControl) {

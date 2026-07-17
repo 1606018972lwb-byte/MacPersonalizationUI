@@ -75,6 +75,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var deleteShortcutController = DeleteToTrashShortcutController(
         appSettings: appSettings
     )
+    private lazy var inputMethodShortcutController = InputMethodShortcutController(
+        appSettings: appSettings
+    )
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
 
@@ -130,12 +133,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             appSettings: appSettings,
             launchAtLoginController: launchAtLoginController,
             updateManager: updateManager,
+            inputMethodShortcutController: inputMethodShortcutController,
             windowRefresher: overlayController
         )
         statusBarController = statusController
         overlayPanelController = overlayController
         overlayController.start()
         deleteShortcutController.start()
+        inputMethodShortcutController.start()
         updateManager.start()
 
         // 等待应用完成首次激活后立即显示主界面。
@@ -148,6 +153,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DistributedNotificationCenter.default().removeObserver(self)
         overlayPanelController?.stop()
         deleteShortcutController.stop()
+        inputMethodShortcutController.stop()
     }
 
     /// 强制启动第二个进程时，由单实例协调器把启动意图转发到这里。

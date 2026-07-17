@@ -1,5 +1,48 @@
+import AppKit
 import CoreGraphics
 import Foundation
+
+/// 可持久化的物理键盘组合，不受当前输入法字符布局影响。
+struct GlobalKeyboardShortcut: Equatable {
+    let keyCode: UInt32
+    let modifierFlags: UInt
+
+    var modifiers: NSEvent.ModifierFlags {
+        NSEvent.ModifierFlags(rawValue: modifierFlags)
+    }
+
+    var displayName: String {
+        var text = ""
+        if modifiers.contains(.control) { text += "⌃" }
+        if modifiers.contains(.option) { text += "⌥" }
+        if modifiers.contains(.shift) { text += "⇧" }
+        if modifiers.contains(.command) { text += "⌘" }
+        text += Self.keyName(for: keyCode)
+        return text
+    }
+
+    private static func keyName(for keyCode: UInt32) -> String {
+        let names: [UInt32: String] = [
+            36: "↩", 48: "⇥", 49: "空格", 51: "⌫", 53: "⎋",
+            115: "↖", 116: "⇞", 117: "⌦", 119: "↘", 121: "⇟",
+            123: "←", 124: "→", 125: "↓", 126: "↑"
+        ]
+        if let name = names[keyCode] {
+            return name
+        }
+        let keyNames: [UInt32: String] = [
+            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z",
+            7: "X", 8: "C", 9: "V", 11: "B", 12: "Q", 13: "W",
+            14: "E", 15: "R", 16: "Y", 17: "T", 18: "1", 19: "2",
+            20: "3", 21: "4", 22: "6", 23: "5", 24: "=", 25: "9",
+            26: "7", 27: "-", 28: "8", 29: "0", 30: "]", 31: "O",
+            32: "U", 33: "[", 34: "I", 35: "P", 37: "L", 38: "J",
+            39: "'", 40: "K", 41: ";", 42: "\\", 43: ",", 44: "/",
+            45: "N", 46: "M", 47: ".", 50: "`"
+        ]
+        return keyNames[keyCode] ?? "键 \(keyCode)"
+    }
+}
 
 /// 使用 UserDefaults 保存用户可调节的界面设置。
 final class AppSettings {
@@ -89,6 +132,12 @@ final class AppSettings {
         static let automaticallyInstallsUpdates = "automaticallyInstallsUpdates"
         static let lastUpdateCheckDate = "lastUpdateCheckDate"
         static let deleteMovesFilesToTrash = "deleteMovesFilesToTrash"
+        static let inputMethodShortcutEnabled = "inputMethodShortcutEnabled"
+        static let inputMethodShortcutKeyCode = "inputMethodShortcutKeyCode"
+        static let inputMethodShortcutModifiers = "inputMethodShortcutModifiers"
+        static let chineseEnglishShortcutEnabled = "chineseEnglishShortcutEnabled"
+        static let chineseEnglishShortcutKeyCode = "chineseEnglishShortcutKeyCode"
+        static let chineseEnglishShortcutModifiers = "chineseEnglishShortcutModifiers"
     }
 
     private let defaults: UserDefaults
@@ -103,6 +152,10 @@ final class AppSettings {
     private(set) var automaticallyInstallsUpdates: Bool
     private(set) var lastUpdateCheckDate: Date?
     private(set) var deleteMovesFilesToTrash: Bool
+    private(set) var isInputMethodShortcutEnabled: Bool
+    private(set) var inputMethodShortcut: GlobalKeyboardShortcut?
+    private(set) var isChineseEnglishShortcutEnabled: Bool
+    private(set) var chineseEnglishShortcut: GlobalKeyboardShortcut?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -129,6 +182,38 @@ final class AppSettings {
         deleteMovesFilesToTrash = defaults.object(
             forKey: Key.deleteMovesFilesToTrash
         ) as? Bool ?? false
+        isInputMethodShortcutEnabled = defaults.object(
+            forKey: Key.inputMethodShortcutEnabled
+        ) as? Bool ?? false
+        if let keyCode = defaults.object(
+            forKey: Key.inputMethodShortcutKeyCode
+        ) as? NSNumber,
+           let modifiers = defaults.object(
+            forKey: Key.inputMethodShortcutModifiers
+           ) as? NSNumber {
+            inputMethodShortcut = GlobalKeyboardShortcut(
+                keyCode: keyCode.uint32Value,
+                modifierFlags: modifiers.uintValue
+            )
+        } else {
+            inputMethodShortcut = nil
+        }
+        isChineseEnglishShortcutEnabled = defaults.object(
+            forKey: Key.chineseEnglishShortcutEnabled
+        ) as? Bool ?? false
+        if let keyCode = defaults.object(
+            forKey: Key.chineseEnglishShortcutKeyCode
+        ) as? NSNumber,
+           let modifiers = defaults.object(
+            forKey: Key.chineseEnglishShortcutModifiers
+           ) as? NSNumber {
+            chineseEnglishShortcut = GlobalKeyboardShortcut(
+                keyCode: keyCode.uint32Value,
+                modifierFlags: modifiers.uintValue
+            )
+        } else {
+            chineseEnglishShortcut = nil
+        }
     }
 
     /// 保存按钮大小，并通知菜单和悬浮面板立即刷新。
@@ -225,6 +310,28 @@ final class AppSettings {
 
     func removeDeleteShortcutObserver(_ identifier: UUID) {
         deleteShortcutObservers.removeValue(forKey: identifier)
+    }
+
+    func setInputMethodShortcut(_ shortcut: GlobalKeyboardShortcut) {
+        inputMethodShortcut = shortcut
+        defaults.set(shortcut.keyCode, forKey: Key.inputMethodShortcutKeyCode)
+        defaults.set(shortcut.modifierFlags, forKey: Key.inputMethodShortcutModifiers)
+    }
+
+    func setInputMethodShortcutEnabled(_ enabled: Bool) {
+        isInputMethodShortcutEnabled = enabled
+        defaults.set(enabled, forKey: Key.inputMethodShortcutEnabled)
+    }
+
+    func setChineseEnglishShortcut(_ shortcut: GlobalKeyboardShortcut) {
+        chineseEnglishShortcut = shortcut
+        defaults.set(shortcut.keyCode, forKey: Key.chineseEnglishShortcutKeyCode)
+        defaults.set(shortcut.modifierFlags, forKey: Key.chineseEnglishShortcutModifiers)
+    }
+
+    func setChineseEnglishShortcutEnabled(_ enabled: Bool) {
+        isChineseEnglishShortcutEnabled = enabled
+        defaults.set(enabled, forKey: Key.chineseEnglishShortcutEnabled)
     }
 
 }
