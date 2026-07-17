@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.3 is based on release 1.3, keeps the Finder file shortcut, and removes disclosure behavior from General:
+Test build 1.4.4 is based on release 1.3, redesigns the integrated control row, and keeps the Finder file shortcut:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -13,7 +13,10 @@ Test build 1.4.3 is based on release 1.3, keeps the Finder file shortcut, and re
 - The shortcut only intercepts Delete while Finder is frontmost and delegates the action to Finder's native Command-Delete behavior, preserving Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
 - An Other-page style selector that keeps the existing floating appearance by default or switches to an integrated title-bar appearance.
-- The integrated appearance removes the control row's bottom corner rounding and shadow, overlaps the target window by 5 points to fill its top-corner gap, and adjusts maximized-window spacing accordingly.
+- The integrated appearance now uses the window-background material to avoid the desktop-tinted color mismatch of the previous title-bar material.
+- The full control row remains visible while a 10-point backing extension is ordered directly behind the target window, filling both top-corner gaps without covering native controls or content.
+- If the target's cross-process window level cannot be identified, overlap is disabled so the control row cannot obstruct the application.
+- Maximized windows reserve the full control-row height in both appearance modes.
 - Login-at-launch registration through macOS 13 `SMAppService`, including approval guidance and a direct Login Items settings shortcut.
 - Update reminders and safe automatic installation are enabled by default, with a default 7-day check interval and optional daily or 30-day intervals.
 - Manual checks remain available at any time.
@@ -57,4 +60,4 @@ Test build 1.4.3 is based on release 1.3, keeps the Finder file shortcut, and re
 
 The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
-The local test package is `dist/MacWindowButtons-1.4.3.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.4.4.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

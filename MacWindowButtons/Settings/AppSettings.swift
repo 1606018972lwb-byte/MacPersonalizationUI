@@ -14,11 +14,11 @@ final class AppSettings {
             }
         }
 
-        /// 一体样式稍微覆盖原窗口顶部，填平原生窗口圆角留下的视觉缺口。
+        /// 一体样式在目标窗口后方延伸的衬底高度，用于填满原生窗口顶角缺口。
         var windowOverlap: CGFloat {
             switch self {
             case .floating: 0
-            case .integrated: 5
+            case .integrated: 10
             }
         }
     }

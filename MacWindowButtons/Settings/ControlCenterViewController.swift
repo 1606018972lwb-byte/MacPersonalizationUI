@@ -416,12 +416,12 @@ final class ControlCenterViewController: NSViewController {
             makeSectionTitle("窗口外观"),
             appearanceRow,
             makeDetailLabel(
-                "“当前悬浮样式”保持原有圆角和阴影；“与窗口一体”移除底部圆角和阴影，并覆盖原窗口顶角的视觉缺口。"
+                "“当前悬浮样式”保持原有圆角和阴影；“与窗口一体”会补齐原窗口顶角，并使用接近窗口主体的颜色。"
             ),
             makeSeparator(),
             makeSectionTitle("一体样式说明"),
             makeDetailLabel(
-                "控制条使用标题栏材质并紧贴窗口，左侧空白区域仍可拖动窗口，最小化、最大化和关闭功能不变。"
+                "控制条的衬底位于目标窗口下一层，不会遮挡原生按钮；上方空白区域仍可拖动窗口。"
             )
         ])
         stack.orientation = .vertical

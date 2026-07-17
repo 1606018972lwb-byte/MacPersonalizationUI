@@ -3,6 +3,12 @@ import ApplicationServices
 
 /// 读取当前前台应用及其焦点窗口。
 final class AccessibilityWindowManager {
+    private struct WindowSnapshot {
+        let number: Int
+        let frame: CGRect
+        let title: String
+    }
+
     private let permissionManager: AccessibilityPermissionManager
     // AXFullScreen 在部分 SDK 中未导出 Swift 常量，但属性名是稳定的公开 AX 名称。
     private let fullScreenAttribute = "AXFullScreen"
@@ -32,6 +38,7 @@ final class AccessibilityWindowManager {
         "com.apple.systemuiserver",
         "com.apple.notificationcenterui"
     ]
+    private var windowSnapshotsByProcess: [pid_t: [WindowSnapshot]] = [:]
 
     init(permissionManager: AccessibilityPermissionManager) {
         self.permissionManager = permissionManager
@@ -42,6 +49,7 @@ final class AccessibilityWindowManager {
         guard permissionManager.isTrusted else {
             return nil
         }
+        refreshWindowSnapshots()
 
         // UIElement/附件应用显示设置窗口后，NSWorkspace 可能仍把之前的普通应用
         // 报告为 frontmost。只要本应用处于活动状态且确实有 Key Window，就优先
@@ -118,6 +126,7 @@ final class AccessibilityWindowManager {
         guard permissionManager.isTrusted else {
             return []
         }
+        refreshWindowSnapshots()
 
         return NSWorkspace.shared.runningApplications
             .filter(isEligible)
@@ -192,11 +201,79 @@ final class AccessibilityWindowManager {
             bundleIdentifier: application.bundleIdentifier ?? "",
             title: window.stringAttribute(kAXTitleAttribute) ?? "",
             frame: CGRect(origin: position, size: size),
+            windowNumber: matchingWindowNumber(
+                processIdentifier: application.processIdentifier,
+                frame: CGRect(origin: position, size: size),
+                title: window.stringAttribute(kAXTitleAttribute) ?? ""
+            ),
             isMinimized: isMinimized,
             isFullScreen: isFullScreen,
             canMinimize: canMinimize,
             canResize: canResize,
             canClose: canClose
         )
+    }
+
+    /// CGWindow 的 bounds 与 AX 坐标同为左上角全局坐标，可据此找到跨进程排序所需的窗口编号。
+    private func refreshWindowSnapshots() {
+        guard let windowInfo = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[CFString: Any]] else {
+            windowSnapshotsByProcess = [:]
+            return
+        }
+
+        var snapshots: [pid_t: [WindowSnapshot]] = [:]
+        for info in windowInfo {
+            guard let ownerPID = info[kCGWindowOwnerPID] as? NSNumber,
+                  let number = info[kCGWindowNumber] as? NSNumber,
+                  let layer = info[kCGWindowLayer] as? NSNumber,
+                  layer.intValue == 0,
+                  let rawBounds = info[kCGWindowBounds] as? NSDictionary,
+                  let frame = CGRect(
+                    dictionaryRepresentation: rawBounds as CFDictionary
+                  ) else {
+                continue
+            }
+            let processIdentifier = pid_t(ownerPID.int32Value)
+            snapshots[processIdentifier, default: []].append(
+                WindowSnapshot(
+                    number: number.intValue,
+                    frame: frame,
+                    title: info[kCGWindowName] as? String ?? ""
+                )
+            )
+        }
+        windowSnapshotsByProcess = snapshots
+    }
+
+    private func matchingWindowNumber(
+        processIdentifier: pid_t,
+        frame: CGRect,
+        title: String
+    ) -> Int? {
+        let candidates = windowSnapshotsByProcess[processIdentifier] ?? []
+        var bestNumber: Int?
+        var bestScore = CGFloat.greatestFiniteMagnitude
+        for snapshot in candidates {
+            let xDifference: CGFloat = abs(snapshot.frame.minX - frame.minX)
+            let yDifference: CGFloat = abs(snapshot.frame.minY - frame.minY)
+            let widthDifference: CGFloat = abs(snapshot.frame.width - frame.width)
+            let heightDifference: CGFloat = abs(snapshot.frame.height - frame.height)
+            var score = xDifference + yDifference
+            score += widthDifference
+            score += heightDifference
+            if !title.isEmpty,
+               !snapshot.title.isEmpty,
+               snapshot.title != title {
+                score += 20
+            }
+            if score <= 40, score < bestScore {
+                bestScore = score
+                bestNumber = snapshot.number
+            }
+        }
+        return bestNumber
     }
 }

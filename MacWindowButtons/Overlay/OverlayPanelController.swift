@@ -156,6 +156,8 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private var dragStartMouseLocation: CGPoint?
     private var dragStartAccessibilityFrame: CGRect?
     private var dragStartAppKitFrame: CGRect?
+    private var orderedWindowNumber: Int?
+    private var orderedAppearance: AppSettings.ControlAppearance?
     private lazy var windowTracker = AccessibilityWindowTracker { [weak self] change in
         self?.trackedWindowDidChange(change)
     }
@@ -357,6 +359,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         )
 
         positionOverlay(using: appKitFrame)
+        orderPanel(relativeTo: targetWindow)
     }
 
     /// 只更新面板几何位置，不重新读取焦点应用、窗口标题和按钮能力。
@@ -364,7 +367,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private func positionOverlay(using appKitFrame: CGRect) {
         let overlaySize = CGSize(
             width: appKitFrame.width,
-            height: appSettings.controlSize.buttonHeight
+            height: appSettings.controlSize.buttonHeight + effectiveWindowUnderlap
         )
         if panel.frame.size != overlaySize {
             panel.setContentSize(overlaySize)
@@ -373,12 +376,37 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         panel.setFrameOrigin(
             CGPoint(
                 x: appKitFrame.minX,
-                y: appKitFrame.maxY - appSettings.controlAppearance.windowOverlap
+                y: appKitFrame.maxY - effectiveWindowUnderlap
             )
         )
-        if !panel.isVisible {
-            panel.orderFrontRegardless()
+    }
+
+    /// 一体模式把衬底排在目标窗口下一层：上方完整按钮行仍可见，向下延伸的
+    /// 10pt 由原窗口覆盖，只负责补齐圆角缺口，不会挡住红黄绿原生按钮。
+    private func orderPanel(relativeTo targetWindow: TargetWindow) {
+        let appearance = appSettings.controlAppearance
+        if panel.isVisible,
+           orderedAppearance == appearance,
+           orderedWindowNumber == targetWindow.windowNumber {
+            return
         }
+
+        switch appearance {
+        case .floating:
+            panel.level = .floating
+            panel.orderFrontRegardless()
+        case .integrated:
+            if let windowNumber = targetWindow.windowNumber {
+                panel.level = .normal
+                panel.order(.below, relativeTo: windowNumber)
+            } else {
+                // 无法取得跨进程窗口编号时不进行重叠，保证不会遮挡目标窗口。
+                panel.level = .floating
+                panel.orderFrontRegardless()
+            }
+        }
+        orderedAppearance = appearance
+        orderedWindowNumber = targetWindow.windowNumber
     }
 
     private func trackedWindowDidChange(_ change: AccessibilityWindowTracker.Change) {
@@ -468,6 +496,9 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
               ) else {
             return
         }
+        // 点击非激活面板时 AppKit 可能调整其顺序；立即重新压到目标窗口后方。
+        orderedAppearance = nil
+        orderPanel(relativeTo: currentWindow)
         dragWindow = currentWindow
         dragStartMouseLocation = mouseLocation
         dragStartAccessibilityFrame = currentWindow.frame
@@ -498,7 +529,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
                 x: dragStartAppKitFrame.minX + delta.x,
                 y: dragStartAppKitFrame.maxY
                     + delta.y
-                    - appSettings.controlAppearance.windowOverlap
+                    - effectiveWindowUnderlap
             )
         )
     }
@@ -542,6 +573,7 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
 
     private func refreshOverlayAfterAction() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in
+            self?.orderedAppearance = nil
             self?.refreshOverlay()
         }
     }
@@ -562,6 +594,8 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         dispatchPrecondition(condition: .onQueue(.main))
         buttonsView.applyAppearance(appearance)
         panel.hasShadow = appearance == .floating
+        orderedAppearance = nil
+        orderedWindowNumber = nil
         if let currentWindow {
             _ = actionService.updateReservedTopSpace(
                 for: currentWindow,
@@ -572,11 +606,16 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     }
 
     private var reservedTopHeight: CGFloat {
-        max(
-            0,
-            appSettings.controlSize.buttonHeight
-                - appSettings.controlAppearance.windowOverlap
-        )
+        appSettings.controlSize.buttonHeight
+    }
+
+    /// 只有成功取得目标窗口编号、确定能放到其下一层时才允许向下延伸。
+    private var effectiveWindowUnderlap: CGFloat {
+        guard appSettings.controlAppearance == .integrated,
+              currentWindow?.windowNumber != nil else {
+            return 0
+        }
+        return appSettings.controlAppearance.windowOverlap
     }
 
 }

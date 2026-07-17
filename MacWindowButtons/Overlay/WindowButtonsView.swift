@@ -43,7 +43,6 @@ final class WindowButtonsView: NSVisualEffectView {
         NSLayoutConstraint.activate([
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
             stackView.topAnchor.constraint(equalTo: topAnchor),
-            stackView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ] + buttonWidthConstraints + buttonHeightConstraints)
     }
 
@@ -89,7 +88,7 @@ final class WindowButtonsView: NSVisualEffectView {
         minimizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         maximizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         closeButton.updateSymbolPointSize(controlSize.symbolPointSize)
-        layer?.cornerRadius = controlSize == .large ? 8 : 7
+        layer?.cornerRadius = controlSize == .large ? 11 : 10
     }
 
     /// 切换当前悬浮外观和贴合目标窗口的标题栏外观。
@@ -104,15 +103,15 @@ final class WindowButtonsView: NSVisualEffectView {
                 .layerMaxXMaxYCorner
             ]
         case .integrated:
-            // 标题栏材质会跟随系统浅色/深色外观；仅保留顶部圆角，底部使用直角
-            // 与目标窗口重叠，视觉上形成一个连续的窗口外框。
-            material = .titlebar
+            // windowBackground 比 titlebar 的半透明取色更接近目标窗口主体；面板的
+            // 下方衬底会排在目标窗口后面，由原窗口自然覆盖，不再遮挡原生按钮。
+            material = .windowBackground
             layer?.maskedCorners = [
                 .layerMinXMaxYCorner,
                 .layerMaxXMaxYCorner
             ]
         }
         layer?.cornerCurve = .continuous
-        layer?.cornerRadius = controlSize == .large ? 8 : 7
+        layer?.cornerRadius = controlSize == .large ? 11 : 10
     }
 }
