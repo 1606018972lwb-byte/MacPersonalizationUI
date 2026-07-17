@@ -4,14 +4,14 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-测试版本 1.4.2 基于正式版本 1.3，增加 Finder 文件快捷操作并继续整理设置界面：
+测试版本 1.4.3 基于正式版本 1.3，取消常规设置折叠并保留 Finder 文件快捷操作：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
 - 设置窗口采用传统 macOS 偏好设置风格，通过“常规 / 权限 / 更新 / 其他 / 快捷键 / 关于”标签分类功能。
 - 原“按钮”页已合并到“常规”页；窗口控制、按钮大小、开机启动和窗口扫描均以单行设置显示。
-- 常规页使用互斥折叠详情：点击某项只展开该项的详细控件，并自动收起上一个设置。
-- 每个折叠行右侧实时显示当前状态摘要，例如权限、启用状态、按钮大小、登录项状态和扫描窗口数。
+- 常规页不再折叠，窗口控制、按钮大小、开机启动和窗口扫描的控件与说明始终直接显示。
+- 常规设置采用紧凑逐行布局，无需额外点击即可查看或修改全部选项。
 - 新增“快捷键”页，“按 Delete 移动文件到废纸篓”默认关闭，可通过复选框明确启用。
 - Delete 快捷键只在 Finder 位于最前方时生效，并转换为 Finder 原生的 `Command-Delete`，支持系统撤销操作。
 - 长按 Delete 只执行一次，避免按键重复连续移动 Finder 后续选中的文件；其他应用中的 Delete 不受影响。
@@ -66,7 +66,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.2.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.3.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
@@ -99,7 +99,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 8. `AppSettings` 使用 `UserDefaults` 保存按钮大小、更新开关、检查周期和上次检查时间。
 9. `LaunchAtLoginController` 通过 `SMAppService.mainApp` 注册登录项并处理系统批准状态。
 10. `UpdateManager` 查询 GitHub/Gitee Release、比较语义版本，并负责经过安全校验的 DMG 更新流程。
-11. `ControlCenterViewController` 使用纯 AppKit 构建常规折叠设置以及权限、更新、其他、快捷键和关于页面。
+11. `ControlCenterViewController` 使用纯 AppKit 构建直接显示的常规设置以及权限、更新、其他、快捷键和关于页面。
 12. `DeleteToTrashShortcutController` 使用事件监听把 Finder 中的单独 Delete 安全转换为原生 `Command-Delete`。
 
 ## 项目目录

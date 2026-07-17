@@ -2,13 +2,13 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.2 is based on release 1.3, adds a Finder file shortcut, and improves the settings hierarchy:
+Test build 1.4.3 is based on release 1.3, keeps the Finder file shortcut, and removes disclosure behavior from General:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
 - Button size is now part of General alongside window controls, launch at login, and window scanning.
-- General uses mutually exclusive disclosure rows: opening one setting reveals its details and automatically collapses the previous row.
-- Each collapsed row shows a live summary such as permission state, enabled state, control size, login-item state, or scanned-window count.
+- General no longer collapses settings; window controls, control size, launch at login, and window scanning remain visible at all times.
+- A compact row layout makes every General setting directly available without an extra click.
 - A new Shortcuts tab includes an opt-in “Press Delete to move files to Trash” checkbox, which is disabled by default.
 - The shortcut only intercepts Delete while Finder is frontmost and delegates the action to Finder's native Command-Delete behavior, preserving Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
@@ -57,4 +57,4 @@ Test build 1.4.2 is based on release 1.3, adds a Finder file shortcut, and impro
 
 The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
-The local test package is `dist/MacWindowButtons-1.4.2.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.4.3.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
