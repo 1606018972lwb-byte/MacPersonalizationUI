@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationServices
 
 /// 通过 Accessibility API 执行最小化、最大化/还原和关闭操作。
@@ -24,6 +25,48 @@ final class WindowActionService {
             return false
         }
         return window.element.setPointAttribute(kAXPositionAttribute, value: position)
+    }
+
+    /// 悬浮样式要求目标窗口顶部始终留出完整控制条高度。
+    ///
+    /// 普通窗口优先整体下移；窗口已经占满可见屏幕时同时缩短高度，避免把底部
+    /// 推出屏幕。只有确实修改成功时返回 true，调用方随后重新读取最终坐标。
+    @discardableResult
+    func ensureTopClearance(for window: TargetWindow, clearance: CGFloat) -> Bool {
+        guard clearance > 0,
+              let screen = ScreenCoordinateConverter.screen(
+                containingAccessibilityRect: window.frame
+              ),
+              let currentFrame = ScreenCoordinateConverter.appKitRect(
+                fromAccessibilityRect: window.frame
+              ) else {
+            return false
+        }
+
+        let highestAllowedWindowTop = screen.visibleFrame.maxY - clearance
+        let overflow = currentFrame.maxY - highestAllowedWindowTop
+        guard overflow > 0.5 else {
+            return false
+        }
+
+        var adjustedFrame = currentFrame
+        adjustedFrame.origin.y -= overflow
+        if adjustedFrame.minY < screen.visibleFrame.minY,
+           window.canResize {
+            let bottomOverflow = screen.visibleFrame.minY - adjustedFrame.minY
+            adjustedFrame.origin.y = screen.visibleFrame.minY
+            adjustedFrame.size.height = max(80, adjustedFrame.height - bottomOverflow)
+        }
+
+        guard let accessibilityFrame = ScreenCoordinateConverter.accessibilityRect(
+            fromAppKitRect: adjustedFrame
+        ) else {
+            return false
+        }
+        if adjustedFrame.size != currentFrame.size {
+            return apply(frame: accessibilityFrame, to: window.element)
+        }
+        return move(window, to: accessibilityFrame.origin)
     }
 
     /// 最大化或还原窗口。最大化使用所在屏幕的 visibleFrame，不进入原生全屏空间。

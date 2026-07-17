@@ -1,7 +1,7 @@
 import AppKit
 
-/// 绘制与目标窗口同宽的半透明占位行，三个窗口按钮固定排列在最右侧。
-final class WindowButtonsView: NSVisualEffectView {
+/// 悬浮样式绘制整行背景；一体样式只保留三个按钮，其余区域由原窗口直接接收事件。
+final class WindowButtonsView: NSView {
     let minimizeButton = WindowControlButton(kind: .minimize)
     let maximizeButton = WindowControlButton(kind: .maximize)
     let closeButton = WindowControlButton(kind: .close)
@@ -11,16 +11,22 @@ final class WindowButtonsView: NSVisualEffectView {
     private var buttonWidthConstraints: [NSLayoutConstraint] = []
     private var buttonHeightConstraints: [NSLayoutConstraint] = []
     private var controlSize: AppSettings.ControlSize = .standard
+    private let backgroundView = NSVisualEffectView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
-        material = .hudWindow
-        blendingMode = .withinWindow
-        state = .active
         wantsLayer = true
-        layer?.cornerRadius = 7
-        layer?.masksToBounds = true
+
+        backgroundView.material = .hudWindow
+        backgroundView.blendingMode = .withinWindow
+        backgroundView.state = .active
+        backgroundView.wantsLayer = true
+        backgroundView.layer?.cornerRadius = 7
+        backgroundView.layer?.cornerCurve = .continuous
+        backgroundView.layer?.masksToBounds = true
+        backgroundView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(backgroundView)
 
         let stackView = NSStackView(views: [minimizeButton, maximizeButton, closeButton])
         stackView.orientation = .horizontal
@@ -41,6 +47,10 @@ final class WindowButtonsView: NSVisualEffectView {
             closeButton.heightAnchor.constraint(equalToConstant: 35)
         ]
         NSLayoutConstraint.activate([
+            backgroundView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            backgroundView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            backgroundView.topAnchor.constraint(equalTo: topAnchor),
+            backgroundView.bottomAnchor.constraint(equalTo: bottomAnchor),
             stackView.trailingAnchor.constraint(equalTo: trailingAnchor),
             stackView.topAnchor.constraint(equalTo: topAnchor),
         ] + buttonWidthConstraints + buttonHeightConstraints)
@@ -88,30 +98,27 @@ final class WindowButtonsView: NSVisualEffectView {
         minimizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         maximizeButton.updateSymbolPointSize(controlSize.symbolPointSize)
         closeButton.updateSymbolPointSize(controlSize.symbolPointSize)
-        layer?.cornerRadius = controlSize == .large ? 11 : 10
+        backgroundView.layer?.cornerRadius = controlSize == .large ? 8 : 7
     }
 
     /// 切换当前悬浮外观和贴合目标窗口的标题栏外观。
     func applyAppearance(_ appearance: AppSettings.ControlAppearance) {
         switch appearance {
         case .floating:
-            material = .hudWindow
-            layer?.maskedCorners = [
+            backgroundView.isHidden = false
+            backgroundView.material = .hudWindow
+            backgroundView.layer?.maskedCorners = [
                 .layerMinXMinYCorner,
                 .layerMaxXMinYCorner,
                 .layerMinXMaxYCorner,
                 .layerMaxXMaxYCorner
             ]
         case .integrated:
-            // windowBackground 比 titlebar 的半透明取色更接近目标窗口主体；面板的
-            // 下方衬底会排在目标窗口后面，由原窗口自然覆盖，不再遮挡原生按钮。
-            material = .windowBackground
-            layer?.maskedCorners = [
-                .layerMinXMaxYCorner,
-                .layerMaxXMaxYCorner
-            ]
+            // 一体模式完全不绘制背景。面板本身也会缩到只有三个按钮宽，透明区域
+            // 不属于任何悬浮窗口，因此点击、文字输入和原生标题栏拖动可直接穿透。
+            backgroundView.isHidden = true
         }
-        layer?.cornerCurve = .continuous
-        layer?.cornerRadius = controlSize == .large ? 11 : 10
+        backgroundView.layer?.cornerCurve = .continuous
+        backgroundView.layer?.cornerRadius = controlSize == .large ? 8 : 7
     }
 }

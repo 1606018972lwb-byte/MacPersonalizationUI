@@ -416,12 +416,12 @@ final class ControlCenterViewController: NSViewController {
             makeSectionTitle("窗口外观"),
             appearanceRow,
             makeDetailLabel(
-                "“当前悬浮样式”保持原有圆角和阴影；“与窗口一体”会补齐原窗口顶角，并使用接近窗口主体的颜色。"
+                "“当前悬浮样式”在窗口上方保留独立控制行；“与窗口一体”透明覆盖在标题栏右侧。"
             ),
             makeSeparator(),
             makeSectionTitle("一体样式说明"),
             makeDetailLabel(
-                "控制条的衬底位于目标窗口下一层，不会遮挡原生按钮；上方空白区域仍可拖动窗口。"
+                "一体模式只创建三个按钮大小的面板，其余区域完全穿透，不影响下方点击、输入文字或拖动窗口。"
             )
         ])
         stack.orientation = .vertical

@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.4 is based on release 1.3, redesigns the integrated control row, and keeps the Finder file shortcut:
+Test build 1.4.5 is based on release 1.3 and adds a click-through integrated overlay plus top-clearance protection for the floating style:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -13,17 +13,18 @@ Test build 1.4.4 is based on release 1.3, redesigns the integrated control row, 
 - The shortcut only intercepts Delete while Finder is frontmost and delegates the action to Finder's native Command-Delete behavior, preserving Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
 - An Other-page style selector that keeps the existing floating appearance by default or switches to an integrated title-bar appearance.
-- The integrated appearance now uses the window-background material to avoid the desktop-tinted color mismatch of the previous title-bar material.
-- The full control row remains visible while a 10-point backing extension is ordered directly behind the target window, filling both top-corner gaps without covering native controls or content.
-- If the target's cross-process window level cannot be identified, overlap is disabled so the control row cannot obstruct the application.
-- Maximized windows reserve the full control-row height in both appearance modes.
+- The integrated appearance overlays the target title bar transparently and creates a real panel only as wide as the three controls, with no full-width colored backing.
+- Outside those three controls there is no hit-testing overlay window, so clicks, keyboard focus, text input, and native title-bar dragging go directly to the application below.
+- The floating appearance enforces enough distance between the target window and the screen's visible top edge for the complete control row, preventing it from covering native window functions.
+- A screen-filling window is shortened when necessary so that reserving the top row does not push its bottom edge off screen.
+- Only the floating appearance reserves an extra row for maximized windows; integrated mode uses the existing title-bar area.
 - Login-at-launch registration through macOS 13 `SMAppService`, including approval guidance and a direct Login Items settings shortcut.
 - Update reminders and safe automatic installation are enabled by default, with a default 7-day check interval and optional daily or 30-day intervals.
 - Manual checks remain available at any time.
 - Automatic installation only after validating the DMG SHA-256, bundle identifier, version, and code signature; failed validation falls back to a manual update prompt.
 - Focused-window discovery through `AXUIElement`.
 - A non-activating translucent `NSPanel` that follows the focused window.
-- An always-visible row matching the target window width, with an empty left placeholder and the three controls aligned right.
+- Floating mode uses an always-visible full-width row above the target; integrated mode overlays only the three transparent-background controls at the title bar's right edge.
 - Event-driven `AXObserver` tracking for immediate move, resize, and focused-window updates.
 - Native title-bar moves update the overlay directly without an extra main-queue hop or focused-window rescan.
 - A temporary up-to-120Hz AX geometry tracker runs only while the original window is moving and stops automatically after the mouse is released.
@@ -60,4 +61,4 @@ Test build 1.4.4 is based on release 1.3, redesigns the integrated control row, 
 
 The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
-The local test package is `dist/MacWindowButtons-1.4.4.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.4.5.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

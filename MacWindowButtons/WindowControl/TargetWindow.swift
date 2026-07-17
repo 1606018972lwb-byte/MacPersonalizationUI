@@ -9,8 +9,6 @@ struct TargetWindow {
     let bundleIdentifier: String
     let title: String
     let frame: CGRect
-    /// Core Graphics 窗口编号，用于把一体控制条精确排列在目标窗口下一层。
-    let windowNumber: Int?
     let isMinimized: Bool
     let isFullScreen: Bool
     let canMinimize: Bool
@@ -35,7 +33,6 @@ struct TargetWindow {
             bundleIdentifier: bundleIdentifier,
             title: title,
             frame: CGRect(origin: position, size: size),
-            windowNumber: windowNumber,
             isMinimized: isMinimized,
             isFullScreen: isFullScreen,
             canMinimize: canMinimize,

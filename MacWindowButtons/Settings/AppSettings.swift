@@ -13,14 +13,6 @@ final class AppSettings {
             case .integrated: "与窗口一体"
             }
         }
-
-        /// 一体样式在目标窗口后方延伸的衬底高度，用于填满原生窗口顶角缺口。
-        var windowOverlap: CGFloat {
-            switch self {
-            case .floating: 0
-            case .integrated: 10
-            }
-        }
     }
 
     enum UpdateInterval: String, CaseIterable {
