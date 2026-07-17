@@ -2,13 +2,14 @@ import AppKit
 
 /// 使用传统 macOS 偏好设置布局展示应用配置。
 ///
-/// 顶部分段控件用于切换“常规、按钮、权限、关于”，所有页面共用同一个
+/// 顶部分段控件用于切换“常规、按钮、权限、更新、关于”，所有页面共用同一个
 /// 分组内容框，视觉结构接近经典桌面软件设置窗口。
 final class ControlCenterViewController: NSViewController {
     private enum SettingsPage: Int, CaseIterable {
         case general
         case buttons
         case permission
+        case update
         case about
 
         var title: String {
@@ -16,6 +17,7 @@ final class ControlCenterViewController: NSViewController {
             case .general: "常规"
             case .buttons: "按钮"
             case .permission: "权限"
+            case .update: "更新"
             case .about: "关于"
             }
         }
@@ -24,6 +26,8 @@ final class ControlCenterViewController: NSViewController {
     private let applicationState: ApplicationState
     private let permissionManager: AccessibilityPermissionManager
     private let appSettings: AppSettings
+    private let launchAtLoginController: LaunchAtLoginController
+    private let updateManager: UpdateManager
     private weak var windowRefresher: WindowOverlayRefreshing?
 
     private let permissionBox = NSBox()
@@ -60,6 +64,42 @@ final class ControlCenterViewController: NSViewController {
     private let refreshStatusLabel = NSTextField(
         wrappingLabelWithString: "扫描运行中的应用，并为当前目标窗口显示顶部控制行。"
     )
+    private lazy var launchAtLoginCheckbox = NSButton(
+        checkboxWithTitle: "登录时自动启动 MacWindowButtons",
+        target: self,
+        action: #selector(toggleLaunchAtLogin(_:))
+    )
+    private let launchAtLoginStatusLabel = NSTextField(wrappingLabelWithString: "")
+    private lazy var openLoginItemsButton = NSButton(
+        title: "打开登录项设置",
+        target: self,
+        action: #selector(openLoginItemsSettings)
+    )
+    private lazy var updateReminderCheckbox = NSButton(
+        checkboxWithTitle: "自动检查并提醒我有新版本",
+        target: self,
+        action: #selector(toggleUpdateReminders(_:))
+    )
+    private lazy var automaticUpdateCheckbox = NSButton(
+        checkboxWithTitle: "后台自动下载、验证并安装更新",
+        target: self,
+        action: #selector(toggleAutomaticUpdates(_:))
+    )
+    private lazy var updateIntervalPopup = NSPopUpButton(
+        frame: .zero,
+        pullsDown: false
+    )
+    private lazy var checkForUpdatesButton = NSButton(
+        title: "立即检查",
+        target: self,
+        action: #selector(checkForUpdatesNow)
+    )
+    private lazy var openReleaseButton = NSButton(
+        title: "查看新版本",
+        target: self,
+        action: #selector(openLatestRelease)
+    )
+    private let updateStatusLabel = NSTextField(wrappingLabelWithString: "尚未检查更新")
     private let pageContainer = NSView()
     private var pageViews: [NSView] = []
 
@@ -67,13 +107,20 @@ final class ControlCenterViewController: NSViewController {
         applicationState: ApplicationState,
         permissionManager: AccessibilityPermissionManager,
         appSettings: AppSettings,
+        launchAtLoginController: LaunchAtLoginController,
+        updateManager: UpdateManager,
         windowRefresher: WindowOverlayRefreshing
     ) {
         self.applicationState = applicationState
         self.permissionManager = permissionManager
         self.appSettings = appSettings
+        self.launchAtLoginController = launchAtLoginController
+        self.updateManager = updateManager
         self.windowRefresher = windowRefresher
         super.init(nibName: nil, bundle: nil)
+        updateManager.onStateChange = { [weak self] in
+            self?.refreshUpdateInterface()
+        }
         preferredContentSize = CGSize(width: 640, height: 410)
     }
 
@@ -114,6 +161,7 @@ final class ControlCenterViewController: NSViewController {
             makeGeneralPage(),
             makeButtonsPage(),
             makePermissionPage(),
+            makeUpdatePage(),
             makeAboutPage()
         ]
         pageViews.enumerated().forEach { index, page in
@@ -131,7 +179,7 @@ final class ControlCenterViewController: NSViewController {
         NSLayoutConstraint.activate([
             pageControl.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 12),
             pageControl.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
-            pageControl.widthAnchor.constraint(equalToConstant: 360),
+            pageControl.widthAnchor.constraint(equalToConstant: 440),
 
             contentBox.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: 16),
             contentBox.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -16),
@@ -166,6 +214,8 @@ final class ControlCenterViewController: NSViewController {
         ) {
             sizeControl.selectedSegment = selectedIndex
         }
+        refreshLaunchAtLoginInterface()
+        refreshUpdateInterface()
     }
 
     /// 权限刚生效时自动启用功能并立即扫描窗口。
@@ -192,6 +242,28 @@ final class ControlCenterViewController: NSViewController {
         refreshStatusLabel.font = .systemFont(ofSize: 11)
         refreshStatusLabel.textColor = .secondaryLabelColor
         refreshStatusLabel.maximumNumberOfLines = 3
+        launchAtLoginStatusLabel.font = .systemFont(ofSize: 11)
+        launchAtLoginStatusLabel.textColor = .secondaryLabelColor
+        launchAtLoginStatusLabel.maximumNumberOfLines = 2
+        openLoginItemsButton.bezelStyle = .rounded
+
+        let loginRow = NSStackView(views: [
+            launchAtLoginCheckbox,
+            makeFlexibleSpacer(),
+            openLoginItemsButton
+        ])
+        loginRow.orientation = .horizontal
+        loginRow.alignment = .centerY
+
+        let startupStack = NSStackView(views: [
+            makeSectionTitle("开机启动"),
+            loginRow,
+            launchAtLoginStatusLabel
+        ])
+        startupStack.orientation = .vertical
+        startupStack.alignment = .leading
+        startupStack.spacing = 8
+        loginRow.widthAnchor.constraint(equalTo: startupStack.widthAnchor).isActive = true
 
         let behaviorStack = NSStackView(views: [
             makeSectionTitle("窗口行为"),
@@ -220,7 +292,13 @@ final class ControlCenterViewController: NSViewController {
         scanStack.alignment = .leading
         scanStack.spacing = 10
 
-        return makePageStack([behaviorStack, makeSeparator(), scanStack])
+        return makePageStack([
+            behaviorStack,
+            makeSeparator(),
+            startupStack,
+            makeSeparator(),
+            scanStack
+        ])
     }
 
     private func makeButtonsPage() -> NSView {
@@ -306,6 +384,65 @@ final class ControlCenterViewController: NSViewController {
         stack.alignment = .leading
         stack.spacing = 12
         permissionView.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return pinStackToPage(stack)
+    }
+
+    private func makeUpdatePage() -> NSView {
+        updateReminderCheckbox.font = .systemFont(ofSize: 13)
+        automaticUpdateCheckbox.font = .systemFont(ofSize: 13)
+
+        updateIntervalPopup.addItems(
+            withTitles: AppSettings.UpdateInterval.allCases.map(\.displayName)
+        )
+        updateIntervalPopup.target = self
+        updateIntervalPopup.action = #selector(changeUpdateInterval(_:))
+        updateIntervalPopup.translatesAutoresizingMaskIntoConstraints = false
+        updateIntervalPopup.widthAnchor.constraint(equalToConstant: 125).isActive = true
+
+        checkForUpdatesButton.bezelStyle = .rounded
+        openReleaseButton.bezelStyle = .rounded
+        updateStatusLabel.font = .systemFont(ofSize: 11)
+        updateStatusLabel.textColor = .secondaryLabelColor
+        updateStatusLabel.maximumNumberOfLines = 3
+
+        let intervalRow = NSStackView(views: [
+            makeFieldLabel("检查频率："),
+            updateIntervalPopup,
+            makeFlexibleSpacer()
+        ])
+        intervalRow.orientation = .horizontal
+        intervalRow.alignment = .centerY
+        intervalRow.spacing = 10
+
+        let actionRow = NSStackView(views: [
+            checkForUpdatesButton,
+            openReleaseButton,
+            makeFlexibleSpacer()
+        ])
+        actionRow.orientation = .horizontal
+        actionRow.alignment = .centerY
+        actionRow.spacing = 8
+
+        let stack = NSStackView(views: [
+            makeSectionTitle("更新提醒"),
+            updateReminderCheckbox,
+            intervalRow,
+            makeDetailLabel("按设定周期同时查询 GitHub 与 Gitee；任一平台可用即可完成检查。"),
+            makeSeparator(),
+            makeSectionTitle("自动更新"),
+            automaticUpdateCheckbox,
+            makeDetailLabel(
+                "仅在 DMG 提供 SHA-256 且应用标识、版本和代码签名均验证通过时静默安装；安装完成后应用会自动重启。"
+            ),
+            makeSeparator(),
+            actionRow,
+            updateStatusLabel
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        intervalRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        actionRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         return pinStackToPage(stack)
     }
 
@@ -487,6 +624,47 @@ final class ControlCenterViewController: NSViewController {
         }
     }
 
+    private func refreshLaunchAtLoginInterface() {
+        let state = launchAtLoginController.state
+        launchAtLoginCheckbox.state = state.isEnabled ? .on : .off
+        switch state {
+        case .enabled:
+            launchAtLoginStatusLabel.stringValue = "已启用，登录 macOS 后应用会在后台启动。"
+            launchAtLoginStatusLabel.textColor = .secondaryLabelColor
+            openLoginItemsButton.isHidden = true
+        case .disabled:
+            launchAtLoginStatusLabel.stringValue = "当前未启用开机自启动。"
+            launchAtLoginStatusLabel.textColor = .secondaryLabelColor
+            openLoginItemsButton.isHidden = true
+        case .requiresApproval:
+            launchAtLoginStatusLabel.stringValue = "需要在系统设置的“登录项”中允许此应用。"
+            launchAtLoginStatusLabel.textColor = .systemOrange
+            openLoginItemsButton.isHidden = false
+        case .unavailable:
+            launchAtLoginStatusLabel.stringValue = "当前安装方式不支持登录项，请把应用移到“应用程序”后重试。"
+            launchAtLoginStatusLabel.textColor = .systemOrange
+            openLoginItemsButton.isHidden = false
+        }
+    }
+
+    private func refreshUpdateInterface() {
+        guard isViewLoaded else {
+            return
+        }
+        updateReminderCheckbox.state = appSettings.checksForUpdates ? .on : .off
+        automaticUpdateCheckbox.state = appSettings.automaticallyInstallsUpdates ? .on : .off
+        automaticUpdateCheckbox.isEnabled = appSettings.checksForUpdates
+        updateIntervalPopup.isEnabled = appSettings.checksForUpdates
+        if let index = AppSettings.UpdateInterval.allCases.firstIndex(
+            of: appSettings.updateInterval
+        ) {
+            updateIntervalPopup.selectItem(at: index)
+        }
+        checkForUpdatesButton.isEnabled = !updateManager.isChecking
+        openReleaseButton.isHidden = updateManager.latestRelease == nil
+        updateStatusLabel.stringValue = updateManager.statusText
+    }
+
     @objc private func selectSettingsPage(_ sender: NSSegmentedControl) {
         guard SettingsPage(rawValue: sender.selectedSegment) != nil else {
             return
@@ -527,6 +705,73 @@ final class ControlCenterViewController: NSViewController {
         } else {
             applicationState.pauseWindowButtons()
         }
+    }
+
+    @objc private func toggleLaunchAtLogin(_ sender: NSButton) {
+        do {
+            try launchAtLoginController.setEnabled(sender.state == .on)
+            refreshLaunchAtLoginInterface()
+            if launchAtLoginController.state == .requiresApproval {
+                showLoginItemApprovalAlert()
+            }
+        } catch {
+            sender.state = .off
+            refreshLaunchAtLoginInterface()
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            alert.messageText = "无法启用开机自启动"
+            alert.informativeText = "\(error.localizedDescription)\n\n请在系统设置的“通用 → 登录项”中允许 MacWindowButtons。"
+            alert.addButton(withTitle: "打开系统设置")
+            alert.addButton(withTitle: "取消")
+            if alert.runModal() == .alertFirstButtonReturn {
+                launchAtLoginController.openSystemSettings()
+            }
+        }
+    }
+
+    @objc private func openLoginItemsSettings() {
+        launchAtLoginController.openSystemSettings()
+    }
+
+    private func showLoginItemApprovalAlert() {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "需要允许后台登录项"
+        alert.informativeText = "macOS 已记录开机启动请求，请在系统设置中允许 MacWindowButtons。"
+        alert.addButton(withTitle: "打开系统设置")
+        alert.addButton(withTitle: "稍后")
+        if alert.runModal() == .alertFirstButtonReturn {
+            launchAtLoginController.openSystemSettings()
+        }
+    }
+
+    @objc private func toggleUpdateReminders(_ sender: NSButton) {
+        appSettings.setChecksForUpdates(sender.state == .on)
+        refreshUpdateInterface()
+        if sender.state == .on {
+            updateManager.checkIfDue()
+        }
+    }
+
+    @objc private func toggleAutomaticUpdates(_ sender: NSButton) {
+        appSettings.setAutomaticallyInstallsUpdates(sender.state == .on)
+        refreshUpdateInterface()
+    }
+
+    @objc private func changeUpdateInterval(_ sender: NSPopUpButton) {
+        let intervals = AppSettings.UpdateInterval.allCases
+        guard intervals.indices.contains(sender.indexOfSelectedItem) else {
+            return
+        }
+        appSettings.setUpdateInterval(intervals[sender.indexOfSelectedItem])
+    }
+
+    @objc private func checkForUpdatesNow() {
+        updateManager.checkNow()
+    }
+
+    @objc private func openLatestRelease() {
+        updateManager.openLatestReleasePage()
     }
 
     @objc private func changeControlSize(_ sender: NSSegmentedControl) {

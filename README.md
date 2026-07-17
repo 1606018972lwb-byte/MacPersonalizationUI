@@ -4,11 +4,15 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-本地测试版本 1.2.1 在正式版 1.1 基础上优化了设置界面与桌面操作体验：
+本地测试版本 1.2.2 在正式版 1.1 基础上优化了设置界面、启动方式与更新体验：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
-- 设置窗口采用传统 macOS 偏好设置风格，通过“常规 / 按钮 / 权限 / 关于”标签分类功能。
+- 设置窗口采用传统 macOS 偏好设置风格，通过“常规 / 按钮 / 权限 / 更新 / 关于”标签分类功能。
+- “常规”页可使用 macOS 13 `SMAppService` 开启登录时自动启动；如果系统需要用户批准，会显示原因并直接打开“登录项”设置。
+- “更新”页可同时查询 GitHub 与 Gitee 的最新 Release，单个平台暂时不可用不会影响另一个平台的结果。
+- 更新提醒默认开启，可选择每天、每 7 天或每 30 天检查，也可以随时手动检查。
+- 可选择后台自动更新；只有 DMG 的 SHA-256、Bundle ID、版本和代码签名全部通过验证才会安装，否则停止自动安装并转为人工提示。
 - 权限页面可以检查授权状态并跳转到系统设置的辅助功能页面。
 - 使用 `NSWorkspace` 和 `AXUIElement` 读取当前前台应用及焦点窗口。
 - 在焦点窗口顶部外侧绘制与窗口同宽的半透明控制行，左侧为空白占位区域，三个按钮固定在最右侧。
@@ -46,7 +50,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.2.1.dmg`。
+1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.2.2.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
@@ -56,6 +60,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 8. 如需调整图标大小，在设置窗口的“按钮”页面选择“小 / 标准 / 大”。
 9. 右键顶部菜单栏图标，可以打开设置、重新启动或退出程序。
 10. 如需重新发现窗口，打开主界面并点击“刷新所有程序窗口”。
+11. 如需开机启动，在“常规”页勾选“登录时自动启动”；若出现橙色提示，请按按钮进入系统设置批准登录项。
+12. 在“更新”页可以设置检查周期、手动检查及自动安装。自动安装完成后应用会自动重启。
 
 从旧的临时签名版本升级时，如果系统设置里的开关显示开启但应用仍提示缺少权限，请点击主界面的“重新授权”，然后在系统设置中重新开启一次。1.9 之后通过项目脚本生成的测试包使用稳定权限身份。
 
@@ -72,8 +78,10 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 5. `OverlayPanelController` 使用非激活 `NSPanel` 定位控制条，并处理主界面触发的全窗口刷新，不抢目标窗口键盘焦点。
 6. `WindowActionService` 执行窗口动作，`WindowStateStore` 为每个窗口保存还原尺寸。
 7. `ScreenCoordinateConverter` 统一 Accessibility 与 AppKit 坐标系。
-8. `AppSettings` 使用 `UserDefaults` 保存大小并通知菜单和悬浮面板刷新。
-9. `ControlCenterViewController` 使用纯 AppKit 构建权限、开关、大小、全窗口刷新和退出界面。
+8. `AppSettings` 使用 `UserDefaults` 保存按钮大小、更新开关、检查周期和上次检查时间。
+9. `LaunchAtLoginController` 通过 `SMAppService.mainApp` 注册登录项并处理系统批准状态。
+10. `UpdateManager` 查询 GitHub/Gitee Release、比较语义版本，并负责经过安全校验的 DMG 更新流程。
+11. `ControlCenterViewController` 使用纯 AppKit 构建常规、按钮、权限、更新和关于页面。
 
 ## 项目目录
 
@@ -98,7 +106,9 @@ MacWindowButtons/
 │   └── WindowControlButton.swift
 ├── Settings/
 │   ├── AppSettings.swift
-│   └── ControlCenterViewController.swift
+│   ├── ControlCenterViewController.swift
+│   ├── LaunchAtLoginController.swift
+│   └── UpdateManager.swift
 ├── Resources/
 │   └── Assets.xcassets/AppIcon.appiconset/
 └── Design/
@@ -119,7 +129,8 @@ MacWindowButtons/
 - [x] 使用 `AXObserver` 替换主要轮询并保留低频兼容轮询。
 - [x] 增加按功能分类的完整偏好设置页面。
 - [ ] 增加应用排除列表。
-- [ ] 增加全局快捷键和开机启动。
+- [x] 增加开机启动、双平台更新提醒和安全自动更新。
+- [ ] 增加全局快捷键。
 - [ ] 增加自动化测试、兼容性测试和正式签名公证。
 
 ## Xcode 项目配置
@@ -156,4 +167,6 @@ xcodebuild -project MacWindowButtons.xcodeproj \
 - 开启辅助功能权限后才能读取和控制其他应用窗口。
 - 本项目不关闭 SIP、不修改系统文件、不进行进程注入。
 - 当前测试 DMG 使用本机临时签名，尚未进行 Developer ID 签名和 Apple 公证。
+- 自动更新要求 Release 正文包含对应 DMG 的 64 位 SHA-256；缺少校验值时只显示更新提醒，不会静默安装。
+- 应用安装目录不可写时无法无感替换，请从发行页面手动安装；正式分发仍建议配置 Developer ID 签名、公证和专用更新框架。
 - 本项目不能保证兼容所有 macOS 应用。

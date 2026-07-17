@@ -70,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let applicationState = ApplicationState()
     private let permissionManager = AccessibilityPermissionManager()
     private let appSettings = AppSettings()
+    private let launchAtLoginController = LaunchAtLoginController()
+    private lazy var updateManager = UpdateManager(appSettings: appSettings)
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
 
@@ -123,11 +125,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             applicationState: applicationState,
             permissionManager: permissionManager,
             appSettings: appSettings,
+            launchAtLoginController: launchAtLoginController,
+            updateManager: updateManager,
             windowRefresher: overlayController
         )
         statusBarController = statusController
         overlayPanelController = overlayController
         overlayController.start()
+        updateManager.start()
 
         // 等待应用完成首次激活后立即显示主界面。
         DispatchQueue.main.async {

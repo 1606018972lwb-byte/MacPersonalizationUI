@@ -3,6 +3,7 @@ import AppKit
 /// 管理菜单栏小图标，以及启动、双击或点击图标后显示的控制中心窗口。
 final class StatusBarController: NSObject {
     private let permissionManager: AccessibilityPermissionManager
+    private let updateManager: UpdateManager
     private let statusItem: NSStatusItem
     private let controlCenterViewController: ControlCenterViewController
     private let controlCenterWindow: NSWindow
@@ -20,14 +21,19 @@ final class StatusBarController: NSObject {
         applicationState: ApplicationState,
         permissionManager: AccessibilityPermissionManager,
         appSettings: AppSettings,
+        launchAtLoginController: LaunchAtLoginController,
+        updateManager: UpdateManager,
         windowRefresher: WindowOverlayRefreshing
     ) {
         self.permissionManager = permissionManager
+        self.updateManager = updateManager
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         controlCenterViewController = ControlCenterViewController(
             applicationState: applicationState,
             permissionManager: permissionManager,
             appSettings: appSettings,
+            launchAtLoginController: launchAtLoginController,
+            updateManager: updateManager,
             windowRefresher: windowRefresher
         )
         controlCenterWindow = NSWindow(
@@ -41,6 +47,9 @@ final class StatusBarController: NSObject {
         configureStatusButton()
         configureControlCenterWindow()
         startPermissionMonitoring()
+        updateManager.onUpdateAvailable = { [weak self] release in
+            self?.showUpdateAvailable(release)
+        }
     }
 
     deinit {
@@ -261,5 +270,20 @@ final class StatusBarController: NSObject {
         alert.informativeText = detail
         alert.addButton(withTitle: "好")
         alert.beginSheetModal(for: controlCenterWindow)
+    }
+
+    private func showUpdateAvailable(_ release: UpdateRelease) {
+        showControlCenter()
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = "发现 MacWindowButtons \(release.version)"
+        alert.informativeText = "更新来自 \(release.source.rawValue)。你可以打开发行页面查看说明并下载安装。"
+        alert.addButton(withTitle: "查看新版本")
+        alert.addButton(withTitle: "稍后")
+        alert.beginSheetModal(for: controlCenterWindow) { [weak self] response in
+            if response == .alertFirstButtonReturn {
+                self?.updateManager.openLatestReleasePage()
+            }
+        }
     }
 }
