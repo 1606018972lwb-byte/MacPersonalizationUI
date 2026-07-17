@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-测试版本 1.4.6 基于正式版本 1.3，增加可配置的输入法全局快捷键：
+测试版本 1.4.7 基于正式版本 1.3，增加仅在文本输入区域生效的输入法快捷键：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -16,8 +16,10 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - Delete 快捷键只在 Finder 位于最前方时生效，并转换为 Finder 原生的 `Command-Delete`，支持系统撤销操作。
 - 长按 Delete 只执行一次，避免按键重复连续移动 Finder 后续选中的文件；其他应用中的 Delete 不受影响。
 - “快捷键”页首项可以直接打开 macOS 的“键盘快捷键”设置。
-- 可分别录入并启用“切换输入法”和“切换中英文”全局快捷键，两项默认关闭。
-- 快捷键使用物理键码保存，不受当前键盘布局影响；录入时会检查 macOS、其他应用及本页另一项快捷键是否占用，冲突时提示且不覆盖原设置。
+- 可分别录入并启用“切换输入法”和“切换中英文”局部快捷键，两项默认关闭，仅在文本框、搜索/地址栏、多行编辑器和网页可编辑区域生效。
+- 支持单独 Command、Option、Control 或 Shift，多个修饰键组合，以及“修饰键＋普通键”；普通键使用物理键码保存，不受当前键盘布局影响。
+- 两个输入源功能不能使用相同组合；发生重复时提示且不覆盖原设置。
+- 纯修饰键在完整释放后才触发；期间按下普通键会取消本次切换，避免把 `Command-Shift-T` 等三键快捷键误判成 `Command-Shift`。
 - “切换输入法”在已启用的键盘输入源间循环；“切换中英文”在最近使用的中文输入法和英文键盘输入源之间切换。
 - “其他”页可通过下拉框选择“当前悬浮样式”或“与窗口一体”；默认继续使用当前悬浮样式。
 - 一体样式直接透明覆盖目标窗口标题栏，只创建右侧三个按钮大小的真实面板，不再绘制整行有色背景。
@@ -73,7 +75,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.6.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-1.4.7.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
@@ -87,7 +89,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 12. 在“更新”页可以设置检查周期、手动检查及自动安装。自动安装完成后应用会自动重启。
 13. 在“其他”页选择“与窗口一体”，控制按钮会透明覆盖在标题栏右侧，按钮以外区域不会拦截下方操作。
 14. 如需在 Finder 中单按 Delete 删除文件，请在“快捷键”页勾选对应选项；该功能需要辅助功能权限。
-15. 如需自定义输入法切换，在“快捷键”页点击录入框、按下组合键，再勾选对应功能；此类全局热键不需要额外辅助功能权限。
+15. 如需自定义输入法切换，在“快捷键”页点击录入框，按下单修饰键、组合修饰键或“修饰键＋普通键”，再勾选对应功能；辅助功能权限用于判断当前焦点是否为文本输入区域。
 
 从旧的临时签名版本升级时，如果系统设置里的开关显示开启但应用仍提示缺少权限，请点击主界面的“重新授权”，然后在系统设置中重新开启一次。1.9 之后通过项目脚本生成的测试包使用稳定权限身份。
 
@@ -109,7 +111,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 10. `UpdateManager` 查询 GitHub/Gitee Release、比较语义版本，并负责经过安全校验的 DMG 更新流程。
 11. `ControlCenterViewController` 使用纯 AppKit 构建直接显示的常规设置以及权限、更新、其他、快捷键和关于页面。
 12. `DeleteToTrashShortcutController` 使用事件监听把 Finder 中的单独 Delete 安全转换为原生 `Command-Delete`。
-13. `InputMethodShortcutController` 使用 Carbon 注册全局热键、检查冲突，并通过 Text Input Source Services 切换输入源。
+13. `InputMethodShortcutController` 监听用户指定的按键，在 AX 焦点为文本输入控件时通过 Text Input Source Services 切换输入源。
 
 ## 项目目录
 
@@ -160,7 +162,7 @@ MacWindowButtons/
 - [x] 增加按功能分类的完整偏好设置页面。
 - [ ] 增加应用排除列表。
 - [x] 增加开机启动、双平台更新提醒和安全自动更新。
-- [x] 增加可配置的输入法全局快捷键和冲突检测。
+- [x] 增加仅在文本输入区域生效、支持纯修饰键的输入法快捷键。
 - [ ] 增加自动化测试、兼容性测试和正式签名公证。
 
 ## Xcode 项目配置

@@ -3,9 +3,13 @@ import AppKit
 /// 点击后直接记录下一次带修饰键的物理按键组合。
 private final class ShortcutRecorderButton: NSButton {
     var onShortcutRecorded: ((GlobalKeyboardShortcut) -> Void)?
+    private let allowsModifierOnly: Bool
     private var savedShortcut: GlobalKeyboardShortcut?
+    private var recordedModifiers: NSEvent.ModifierFlags = []
+    private var isRecording = false
 
-    init() {
+    init(allowsModifierOnly: Bool = false) {
+        self.allowsModifierOnly = allowsModifierOnly
         super.init(frame: .zero)
         title = "点击录入"
         bezelStyle = .rounded
@@ -27,14 +31,15 @@ private final class ShortcutRecorderButton: NSButton {
     }
 
     @objc private func beginRecording() {
+        recordedModifiers = []
+        isRecording = true
         window?.makeFirstResponder(self)
-        title = "请按组合键…"
+        title = allowsModifierOnly ? "请按下快捷键…" : "请按组合键…"
     }
 
     override func keyDown(with event: NSEvent) {
         if event.keyCode == 53 {
-            show(savedShortcut)
-            window?.makeFirstResponder(nil)
+            cancelRecording()
             return
         }
         let modifiers = event.modifierFlags.intersection([
@@ -48,13 +53,53 @@ private final class ShortcutRecorderButton: NSButton {
             title = "需要修饰键"
             return
         }
-        let shortcut = GlobalKeyboardShortcut(
-            keyCode: UInt32(event.keyCode),
-            modifierFlags: modifiers.rawValue
+        completeRecording(
+            GlobalKeyboardShortcut(
+                keyCode: UInt32(event.keyCode),
+                modifierFlags: modifiers.rawValue
+            )
         )
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        guard isRecording, allowsModifierOnly else {
+            super.flagsChanged(with: event)
+            return
+        }
+        let modifiers = event.modifierFlags.intersection([
+            .command,
+            .option,
+            .control,
+            .shift
+        ])
+        if !modifiers.isEmpty {
+            recordedModifiers.formUnion(modifiers)
+            title = GlobalKeyboardShortcut(
+                keyCode: nil,
+                modifierFlags: recordedModifiers.rawValue
+            ).displayName
+        } else if !recordedModifiers.isEmpty {
+            completeRecording(
+                GlobalKeyboardShortcut(
+                    keyCode: nil,
+                    modifierFlags: recordedModifiers.rawValue
+                )
+            )
+        }
+    }
+
+    private func completeRecording(_ shortcut: GlobalKeyboardShortcut) {
+        isRecording = false
         title = shortcut.displayName
         window?.makeFirstResponder(nil)
         onShortcutRecorded?(shortcut)
+    }
+
+    private func cancelRecording() {
+        isRecording = false
+        recordedModifiers = []
+        show(savedShortcut)
+        window?.makeFirstResponder(nil)
     }
 }
 
@@ -182,8 +227,12 @@ final class ControlCenterViewController: NSViewController {
         target: self,
         action: #selector(toggleChineseEnglishShortcut(_:))
     )
-    private let inputMethodShortcutRecorder = ShortcutRecorderButton()
-    private let chineseEnglishShortcutRecorder = ShortcutRecorderButton()
+    private let inputMethodShortcutRecorder = ShortcutRecorderButton(
+        allowsModifierOnly: true
+    )
+    private let chineseEnglishShortcutRecorder = ShortcutRecorderButton(
+        allowsModifierOnly: true
+    )
     private let inputMethodShortcutStatusLabel = NSTextField(wrappingLabelWithString: "")
     private let chineseEnglishShortcutStatusLabel = NSTextField(wrappingLabelWithString: "")
     private lazy var controlAppearancePopup = NSPopUpButton(
@@ -560,12 +609,12 @@ final class ControlCenterViewController: NSViewController {
         }
         let inputMethodRow = shortcutRow(
             checkbox: inputMethodShortcutCheckbox,
-            title: "切换输入法",
+            title: "切换输入法（仅输入框）",
             recorder: inputMethodShortcutRecorder
         )
         let chineseEnglishRow = shortcutRow(
             checkbox: chineseEnglishShortcutCheckbox,
-            title: "切换中英文",
+            title: "切换中英文（仅输入框）",
             recorder: chineseEnglishShortcutRecorder
         )
 
@@ -579,7 +628,9 @@ final class ControlCenterViewController: NSViewController {
             inputMethodShortcutStatusLabel,
             chineseEnglishRow,
             chineseEnglishShortcutStatusLabel,
-            makeDetailLabel("点击录入框后按组合键；录入时会检查系统、其他应用以及本页快捷键冲突。"),
+            makeDetailLabel(
+                "支持单修饰键、组合修饰键或修饰键＋普通键；两个功能不能使用相同组合，且只在文本输入区域生效。"
+            ),
             makeSeparator(),
             makeSectionTitle("Finder 文件操作"),
             deleteToTrashCheckbox,
@@ -867,7 +918,8 @@ final class ControlCenterViewController: NSViewController {
     ) {
         let status = inputMethodShortcutController.statusText(for: action)
         label.stringValue = status
-        if status.contains("冲突") || status.contains("占用") || status.contains("错误") {
+        if status.contains("冲突") || status.contains("占用")
+            || status.contains("错误") || status.contains("需要") {
             label.textColor = .systemOrange
         } else if enabled {
             label.textColor = .systemGreen
@@ -1048,6 +1100,9 @@ final class ControlCenterViewController: NSViewController {
             refreshShortcutInterface()
             return
         }
+        if enabled && !permissionManager.isTrusted {
+            permissionManager.requestPermissionFromUser()
+        }
         refreshShortcutInterface()
     }
 
@@ -1072,9 +1127,9 @@ final class ControlCenterViewController: NSViewController {
         case .success:
             return
         case .missingShortcut:
-            detail = "请先点击右侧录入框，然后按下带 Command、Option、Control 或 Shift 的组合键。"
+            detail = "请先点击右侧录入框，然后按下单修饰键、组合修饰键或“修饰键＋普通键”。"
         case .conflict:
-            detail = "这个组合键已被 macOS、其他应用或本页另一个功能占用，请换一个组合键。"
+            detail = "这个组合键与本页另一个输入法功能重复，请换一个组合键。"
         case let .failed(message):
             detail = message
         }

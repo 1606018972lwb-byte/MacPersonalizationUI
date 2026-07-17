@@ -1,7 +1,8 @@
 import AppKit
+import ApplicationServices
 import Carbon
 
-/// 注册输入源相关的自定义全局快捷键，并使用系统注册结果检测组合键冲突。
+/// 管理仅在文本输入控件中生效的输入源快捷键。
 final class InputMethodShortcutController {
     enum Action: UInt32, CaseIterable {
         case nextInputMethod = 1
@@ -15,10 +16,10 @@ final class InputMethodShortcutController {
         case failed(String)
     }
 
-    private static let signature: OSType = 0x4D_57_42_49 // "MWBI"
     private let appSettings: AppSettings
-    private var eventHandler: EventHandlerRef?
-    private var registeredHotKeys: [Action: EventHotKeyRef] = [:]
+    private var localEventMonitors: [Any] = []
+    private var modifierOnlyCandidateAction: Action?
+    private var modifierOnlyCandidateIsInvalid = false
     private var statusTexts: [Action: String] = [:]
     private var lastLatinInputSourceID: String?
     private var lastChineseInputSourceID: String?
@@ -30,7 +31,7 @@ final class InputMethodShortcutController {
     }
 
     func start() {
-        installEventHandlerIfNeeded()
+        installLocalShortcutMonitorsIfNeeded()
         for action in Action.allCases {
             guard isEnabled(action) else {
                 updateStatus("已关闭。", for: action)
@@ -53,18 +54,15 @@ final class InputMethodShortcutController {
     }
 
     func stop() {
-        Action.allCases.forEach(unregisterHotKey)
-        if let eventHandler {
-            RemoveEventHandler(eventHandler)
-            self.eventHandler = nil
-        }
+        localEventMonitors.forEach(NSEvent.removeMonitor)
+        localEventMonitors.removeAll()
     }
 
     func statusText(for action: Action) -> String {
         statusTexts[action] ?? ""
     }
 
-    /// 录入后立即尝试全局注册。系统返回重复时不保存，原快捷键继续有效。
+    /// 局部快捷键不会占用系统全局热键；这里只拒绝两个输入源功能使用相同组合。
     func updateShortcut(
         _ shortcut: GlobalKeyboardShortcut,
         for action: Action
@@ -74,27 +72,19 @@ final class InputMethodShortcutController {
             return .success
         }
 
-        var candidateReference: EventHotKeyRef?
-        let status = register(
-            shortcut,
-            action: action,
-            reference: &candidateReference
-        )
-        guard status == noErr else {
-            return registrationFailure(status, shortcut: shortcut, action: action)
+        if Action.allCases.contains(where: {
+            $0 != action && savedShortcut(for: $0) == shortcut
+        }) {
+            updateStatus("快捷键 \(shortcut.displayName) 与本页另一项设置重复。", for: action)
+            return .conflict
         }
 
-        if isEnabled(action) {
-            unregisterHotKey(action)
-            registeredHotKeys[action] = candidateReference
-        } else if let candidateReference {
-            UnregisterEventHotKey(candidateReference)
-        }
         saveShortcut(shortcut, for: action)
+        resetModifierOnlyCandidate()
         updateStatus(
             isEnabled(action)
-                ? "已启用：\(shortcut.displayName)"
-                : "快捷键可用，勾选后启用：\(shortcut.displayName)",
+                ? localEnabledStatus(for: shortcut)
+                : "快捷键可用，勾选后仅在输入框生效：\(shortcut.displayName)",
             for: action
         )
         return .success
@@ -103,8 +93,8 @@ final class InputMethodShortcutController {
     func setEnabled(_ enabled: Bool, for action: Action) -> RegistrationResult {
         dispatchPrecondition(condition: .onQueue(.main))
         guard enabled else {
-            unregisterHotKey(action)
             saveEnabled(false, for: action)
+            resetModifierOnlyCandidate()
             updateStatus("已关闭。", for: action)
             return .success
         }
@@ -112,112 +102,172 @@ final class InputMethodShortcutController {
             updateStatus("请先点击输入框并按下一个组合键。", for: action)
             return .missingShortcut
         }
-        if registeredHotKeys[action] != nil {
-            saveEnabled(true, for: action)
-            updateStatus("已启用：\(shortcut.displayName)", for: action)
-            return .success
-        }
-
-        var reference: EventHotKeyRef?
-        let status = register(shortcut, action: action, reference: &reference)
-        guard status == noErr else {
-            return registrationFailure(status, shortcut: shortcut, action: action)
-        }
-        registeredHotKeys[action] = reference
         saveEnabled(true, for: action)
-        updateStatus("已启用：\(shortcut.displayName)", for: action)
+        updateStatus(localEnabledStatus(for: shortcut), for: action)
         return .success
     }
 
-    private func registrationFailure(
-        _ status: OSStatus,
-        shortcut: GlobalKeyboardShortcut,
-        action: Action
-    ) -> RegistrationResult {
-        if status == eventHotKeyExistsErr {
-            updateStatus(
-                "快捷键 \(shortcut.displayName) 已被系统或其他应用占用。",
-                for: action
-            )
-            return .conflict
-        }
-        let message = "无法注册快捷键（错误 \(status)）。"
-        updateStatus(message, for: action)
-        return .failed(message)
-    }
-
-    private func installEventHandlerIfNeeded() {
-        guard eventHandler == nil else {
+    /// 事件可以来自任意应用，但只有辅助功能焦点确认位于文本输入控件时才执行。
+    /// 监听器不拦截原事件，因此普通窗口区域和其他应用快捷键行为保持不变。
+    private func installLocalShortcutMonitorsIfNeeded() {
+        guard localEventMonitors.isEmpty else {
             return
         }
-        var eventType = EventTypeSpec(
-            eventClass: OSType(kEventClassKeyboard),
-            eventKind: UInt32(kEventHotKeyPressed)
-        )
-        let callback: EventHandlerUPP = { _, event, userData in
-            guard let event, let userData else {
-                return OSStatus(eventNotHandledErr)
+        if let monitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.flagsChanged, .keyDown],
+            handler: { [weak self] event in
+                self?.handleLocalShortcutEvent(event)
             }
-            var hotKeyID = EventHotKeyID()
-            let status = GetEventParameter(
-                event,
-                EventParamName(kEventParamDirectObject),
-                EventParamType(typeEventHotKeyID),
-                nil,
-                MemoryLayout<EventHotKeyID>.size,
-                nil,
-                &hotKeyID
-            )
-            guard status == noErr,
-                  hotKeyID.signature == InputMethodShortcutController.signature,
-                  let action = Action(rawValue: hotKeyID.id) else {
-                return OSStatus(eventNotHandledErr)
+        ) {
+            localEventMonitors.append(monitor)
+        }
+    }
+
+    private func handleLocalShortcutEvent(_ event: NSEvent) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let enabledShortcuts = Action.allCases.compactMap { action -> (
+            action: Action,
+            shortcut: GlobalKeyboardShortcut
+        )? in
+            guard isEnabled(action), let shortcut = savedShortcut(for: action) else {
+                return nil
             }
-            let controller = Unmanaged<InputMethodShortcutController>
-                .fromOpaque(userData)
-                .takeUnretainedValue()
-            controller.perform(action)
-            return noErr
+            return (action, shortcut)
         }
-        InstallEventHandler(
-            GetApplicationEventTarget(),
-            callback,
-            1,
-            &eventType,
-            Unmanaged.passUnretained(self).toOpaque(),
-            &eventHandler
+        guard !enabledShortcuts.isEmpty else {
+            resetModifierOnlyCandidate()
+            return
+        }
+
+        if event.type == .keyDown {
+            // 任意普通键都会取消正在等待释放的纯修饰键组合，避免
+            // Command-Shift-T 等三键快捷键被误判成 Command-Shift。
+            modifierOnlyCandidateIsInvalid = true
+            guard !event.isARepeat else {
+                return
+            }
+            let eventModifiers = relevantModifiers(event.modifierFlags)
+            guard let match = enabledShortcuts.first(where: {
+                $0.shortcut.keyCode == UInt32(event.keyCode)
+                    && $0.shortcut.modifiers == eventModifiers
+            }),
+                  isFocusedElementTextInput() else {
+                return
+            }
+            perform(match.action)
+            return
+        }
+
+        guard event.type == .flagsChanged else {
+            return
+        }
+        let modifierOnlyShortcuts = enabledShortcuts.filter {
+            $0.shortcut.keyCode == nil
+        }
+        handleModifierOnlyShortcut(
+            currentModifiers: relevantModifiers(event.modifierFlags),
+            shortcuts: modifierOnlyShortcuts
         )
     }
 
-    private func register(
-        _ shortcut: GlobalKeyboardShortcut,
-        action: Action,
-        reference: inout EventHotKeyRef?
-    ) -> OSStatus {
-        installEventHandlerIfNeeded()
-        return RegisterEventHotKey(
-            shortcut.keyCode,
-            carbonModifiers(from: shortcut.modifiers),
-            EventHotKeyID(signature: Self.signature, id: action.rawValue),
-            GetApplicationEventTarget(),
-            0,
-            &reference
-        )
-    }
-
-    private func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
-        var modifiers: UInt32 = 0
-        if flags.contains(.command) { modifiers |= UInt32(cmdKey) }
-        if flags.contains(.option) { modifiers |= UInt32(optionKey) }
-        if flags.contains(.control) { modifiers |= UInt32(controlKey) }
-        if flags.contains(.shift) { modifiers |= UInt32(shiftKey) }
-        return modifiers
-    }
-
-    private func unregisterHotKey(_ action: Action) {
-        if let reference = registeredHotKeys.removeValue(forKey: action) {
-            UnregisterEventHotKey(reference)
+    private func handleModifierOnlyShortcut(
+        currentModifiers: NSEvent.ModifierFlags,
+        shortcuts: [(action: Action, shortcut: GlobalKeyboardShortcut)]
+    ) {
+        guard !shortcuts.isEmpty else {
+            resetModifierOnlyCandidate()
+            return
         }
+        if let match = shortcuts.first(where: {
+            !$0.shortcut.modifiers.isEmpty
+                && $0.shortcut.modifiers == currentModifiers
+        }) {
+            if let candidateAction = modifierOnlyCandidateAction,
+               candidateAction != match.action,
+               let candidateShortcut = savedShortcut(for: candidateAction) {
+                // 从单修饰键继续按到已配置的组合修饰键时，优先采用更完整
+                // 的组合；释放组合中的某个键时则不能降级触发单修饰键。
+                if currentModifiers.rawValue.nonzeroBitCount
+                    > candidateShortcut.modifiers.rawValue.nonzeroBitCount {
+                    modifierOnlyCandidateAction = match.action
+                    modifierOnlyCandidateIsInvalid = false
+                }
+            } else if modifierOnlyCandidateAction == nil {
+                modifierOnlyCandidateAction = match.action
+                modifierOnlyCandidateIsInvalid = false
+            }
+            return
+        }
+        guard let candidateAction = modifierOnlyCandidateAction,
+              let candidateShortcut = savedShortcut(for: candidateAction) else {
+            return
+        }
+
+        let containsUnexpectedModifier = currentModifiers.rawValue
+            & ~candidateShortcut.modifiers.rawValue != 0
+        if containsUnexpectedModifier {
+            modifierOnlyCandidateIsInvalid = true
+        }
+        guard currentModifiers.isEmpty else {
+            return
+        }
+
+        let shouldPerform = !modifierOnlyCandidateIsInvalid
+            && isFocusedElementTextInput()
+        resetModifierOnlyCandidate()
+        if shouldPerform {
+            perform(candidateAction)
+        }
+    }
+
+    private func relevantModifiers(
+        _ flags: NSEvent.ModifierFlags
+    ) -> NSEvent.ModifierFlags {
+        flags.intersection([.command, .option, .control, .shift])
+    }
+
+    /// 通过当前前台进程的 AXFocusedUIElement 判断光标是否位于可编辑文本区域。
+    /// 常规文本框、搜索/地址栏、多行编辑器及网页可编辑文本均会报告这些角色。
+    private func isFocusedElementTextInput() -> Bool {
+        guard AXIsProcessTrusted(),
+              let application = NSWorkspace.shared.frontmostApplication else {
+            return false
+        }
+        let applicationElement = AXUIElementCreateApplication(
+            application.processIdentifier
+        )
+        guard let rawElement = applicationElement.copyAttribute(
+            kAXFocusedUIElementAttribute
+        ), CFGetTypeID(rawElement) == AXUIElementGetTypeID() else {
+            return false
+        }
+        let element = rawElement as! AXUIElement
+        let role = element.stringAttribute(kAXRoleAttribute) ?? ""
+        let textRoles: Set<String> = [
+            "AXTextField",
+            "AXTextArea",
+            "AXComboBox"
+        ]
+        if textRoles.contains(role) {
+            return true
+        }
+        let subrole = element.stringAttribute(kAXSubroleAttribute) ?? ""
+        return (role.localizedCaseInsensitiveContains("text")
+            || subrole.localizedCaseInsensitiveContains("text")
+            || subrole == "AXSearchField")
+            && element.isAttributeSettable(kAXValueAttribute)
+    }
+
+    private func resetModifierOnlyCandidate() {
+        modifierOnlyCandidateAction = nil
+        modifierOnlyCandidateIsInvalid = false
+    }
+
+    private func localEnabledStatus(for shortcut: GlobalKeyboardShortcut) -> String {
+        if AXIsProcessTrusted() {
+            return "已启用（仅输入框）：\(shortcut.displayName)"
+        }
+        return "已启用，但需要辅助功能权限判断当前是否为输入框。"
     }
 
     private func savedShortcut(for action: Action) -> GlobalKeyboardShortcut? {

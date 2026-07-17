@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Test build 1.4.6 is based on release 1.3 and adds configurable global input-source shortcuts:
+Test build 1.4.7 is based on release 1.3 and adds input-source shortcuts scoped to editable text controls:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -13,8 +13,10 @@ Test build 1.4.6 is based on release 1.3 and adds configurable global input-sour
 - The shortcut only intercepts Delete while Finder is frontmost and delegates the action to Finder's native Command-Delete behavior, preserving Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
 - The first Shortcuts action opens macOS Keyboard Shortcuts settings directly.
-- Separate opt-in shortcuts can be recorded for cycling input methods and toggling Chinese/English; both are disabled by default.
-- Shortcuts are stored as physical key codes and checked against macOS, other applications, and the other shortcut row before they are saved. Conflicts show a warning and preserve the previous setting.
+- Separate opt-in shortcuts can be recorded for cycling input methods and toggling Chinese/English; both are disabled by default and only act in text fields, search/address fields, multiline editors, and editable web content.
+- A single modifier, multiple modifiers, or modifiers plus a regular key can be recorded. Regular keys are stored as physical key codes, independent of the active keyboard layout.
+- The two input-source actions cannot share the same combination; duplicates show a warning and preserve the previous setting.
+- Modifier-only shortcuts fire after all modifiers are released and are cancelled if a regular key is pressed, preventing Command-Shift-T and similar shortcuts from being mistaken for Command-Shift.
 - Cycling moves through enabled keyboard input sources, while Chinese/English toggle remembers the most recently used source in each language group.
 - An Other-page style selector that keeps the existing floating appearance by default or switches to an integrated title-bar appearance.
 - The integrated appearance overlays the target title bar transparently and creates a real panel only as wide as the three controls, with no full-width colored backing.
@@ -65,4 +67,4 @@ Test build 1.4.6 is based on release 1.3 and adds configurable global input-sour
 
 The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
-The local test package is `dist/MacWindowButtons-1.4.6.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.4.7.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

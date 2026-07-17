@@ -4,7 +4,8 @@ import Foundation
 
 /// 可持久化的物理键盘组合，不受当前输入法字符布局影响。
 struct GlobalKeyboardShortcut: Equatable {
-    let keyCode: UInt32
+    /// `nil` 表示快捷键只由一个或多个修饰键组成。
+    let keyCode: UInt32?
     let modifierFlags: UInt
 
     var modifiers: NSEvent.ModifierFlags {
@@ -17,7 +18,9 @@ struct GlobalKeyboardShortcut: Equatable {
         if modifiers.contains(.option) { text += "⌥" }
         if modifiers.contains(.shift) { text += "⇧" }
         if modifiers.contains(.command) { text += "⌘" }
-        text += Self.keyName(for: keyCode)
+        if let keyCode {
+            text += Self.keyName(for: keyCode)
+        }
         return text
     }
 
@@ -125,6 +128,7 @@ final class AppSettings {
     }
 
     private enum Key {
+        static let modifierOnlyKeyCode = UInt32.max
         static let controlSize = "windowControlButtonSize"
         static let controlAppearance = "windowControlAppearance"
         static let checksForUpdates = "checksForUpdates"
@@ -192,7 +196,9 @@ final class AppSettings {
             forKey: Key.inputMethodShortcutModifiers
            ) as? NSNumber {
             inputMethodShortcut = GlobalKeyboardShortcut(
-                keyCode: keyCode.uint32Value,
+                keyCode: keyCode.uint32Value == Key.modifierOnlyKeyCode
+                    ? nil
+                    : keyCode.uint32Value,
                 modifierFlags: modifiers.uintValue
             )
         } else {
@@ -208,7 +214,9 @@ final class AppSettings {
             forKey: Key.chineseEnglishShortcutModifiers
            ) as? NSNumber {
             chineseEnglishShortcut = GlobalKeyboardShortcut(
-                keyCode: keyCode.uint32Value,
+                keyCode: keyCode.uint32Value == Key.modifierOnlyKeyCode
+                    ? nil
+                    : keyCode.uint32Value,
                 modifierFlags: modifiers.uintValue
             )
         } else {
@@ -314,7 +322,10 @@ final class AppSettings {
 
     func setInputMethodShortcut(_ shortcut: GlobalKeyboardShortcut) {
         inputMethodShortcut = shortcut
-        defaults.set(shortcut.keyCode, forKey: Key.inputMethodShortcutKeyCode)
+        defaults.set(
+            shortcut.keyCode ?? Key.modifierOnlyKeyCode,
+            forKey: Key.inputMethodShortcutKeyCode
+        )
         defaults.set(shortcut.modifierFlags, forKey: Key.inputMethodShortcutModifiers)
     }
 
@@ -325,7 +336,10 @@ final class AppSettings {
 
     func setChineseEnglishShortcut(_ shortcut: GlobalKeyboardShortcut) {
         chineseEnglishShortcut = shortcut
-        defaults.set(shortcut.keyCode, forKey: Key.chineseEnglishShortcutKeyCode)
+        defaults.set(
+            shortcut.keyCode ?? Key.modifierOnlyKeyCode,
+            forKey: Key.chineseEnglishShortcutKeyCode
+        )
         defaults.set(shortcut.modifierFlags, forKey: Key.chineseEnglishShortcutModifiers)
     }
 
