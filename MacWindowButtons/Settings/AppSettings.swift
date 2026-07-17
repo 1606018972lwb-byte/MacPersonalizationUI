@@ -122,9 +122,13 @@ final class AppSettings {
         updateInterval = UpdateInterval(
             rawValue: defaults.string(forKey: Key.updateInterval) ?? ""
         ) ?? .weekly
-        automaticallyInstallsUpdates = defaults.bool(
+        // 新安装默认启用安全自动更新；如果用户已经主动修改过该选项，继续尊重
+        // 已保存的值。关闭更新提醒时自动更新也必须保持关闭，避免后台继续联网。
+        let savedAutomaticUpdate = defaults.object(
             forKey: Key.automaticallyInstallsUpdates
-        )
+        ) as? Bool
+        automaticallyInstallsUpdates = checksForUpdates
+            && (savedAutomaticUpdate ?? true)
         lastUpdateCheckDate = defaults.object(forKey: Key.lastUpdateCheckDate) as? Date
     }
 

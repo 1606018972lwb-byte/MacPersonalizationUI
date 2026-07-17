@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-本地测试版本 1.2.3 在正式版 1.1 基础上优化了设置界面、窗口外观、启动方式与更新体验：
+本地测试版本 1.2.4 在正式版 1.1 基础上优化了设置界面、窗口外观、启动方式与更新体验：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -14,8 +14,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 切换外观后立即生效并保存；最大化窗口的顶部预留高度会同步校正。
 - “常规”页可使用 macOS 13 `SMAppService` 开启登录时自动启动；如果系统需要用户批准，会显示原因并直接打开“登录项”设置。
 - “更新”页可同时查询 GitHub 与 Gitee 的最新 Release，单个平台暂时不可用不会影响另一个平台的结果。
-- 更新提醒默认开启，可选择每天、每 7 天或每 30 天检查，也可以随时手动检查。
-- 可选择后台自动更新；只有 DMG 的 SHA-256、Bundle ID、版本和代码签名全部通过验证才会安装，否则停止自动安装并转为人工提示。
+- 更新提醒默认开启并默认每 7 天检查，也可选择每天或每 30 天检查，并可随时手动检查。
+- 安全自动更新默认开启；只有 DMG 的 SHA-256、Bundle ID、版本和代码签名全部通过验证才会安装，否则停止自动安装并转为人工提示。
 - 权限页面可以检查授权状态并跳转到系统设置的辅助功能页面。
 - 使用 `NSWorkspace` 和 `AXUIElement` 读取当前前台应用及焦点窗口。
 - 在焦点窗口顶部外侧绘制与窗口同宽的半透明控制行，左侧为空白占位区域，三个按钮固定在最右侧。
@@ -53,7 +53,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.2.3.dmg`。
+1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.2.4.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
