@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-本地测试版本 1.3.1 在正式版 1.2 基础上继续优化窗口识别和设置窗口体验：
+本地测试版本 1.3.2 在正式版 1.2 基础上继续优化浏览器插件场景与窗口识别：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -24,6 +24,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 拖动原窗口标题栏时，移动通知会直接更新控制条，不再异步排队或重复扫描焦点窗口。
 - 原窗口持续移动期间临时启用最高 120Hz 的 AX 坐标跟踪，鼠标释放后自动停止，兼顾贴合速度与日常功耗。
 - 浏览器扩展弹窗、菜单式浮层和无原生窗口能力的临时面板不会显示控制条。
+- 点击浏览器插件后，插件弹窗不会成为目标；控制条会回退并继续跟随同一浏览器的主窗口。
+- 浏览器优先使用 `AXMainWindow`，缺失时从标准窗口中选择面积最大的主窗口作为兼容兜底。
 - 普通应用设置/偏好设置窗口会正常显示控制条，MacWindowButtons 自身设置窗口也作为真实目标窗口处理。
 - 全窗口刷新优先选择当前真正获得焦点的窗口，不再误用后方最近窗口的位置。
 - 拖动控制行左侧空白区域会同步移动目标窗口，操作方式接近 Windows 标题栏。
@@ -58,7 +60,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.3.1.dmg`。
+1. 构建本地测试包后，打开 `dist/MacWindowButtons-1.3.2.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。

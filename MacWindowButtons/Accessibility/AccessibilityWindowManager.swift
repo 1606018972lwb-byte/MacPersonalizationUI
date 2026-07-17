@@ -65,14 +65,52 @@ final class AccessibilityWindowManager {
 
     private func focusedWindow(in application: NSRunningApplication) -> TargetWindow? {
         let applicationElement = AXUIElementCreateApplication(application.processIdentifier)
-        guard let rawWindow = applicationElement.copyAttribute(kAXFocusedWindowAttribute),
+        if let focusedWindow = targetWindow(
+            from: applicationElement.copyAttribute(kAXFocusedWindowAttribute),
+            application: application
+        ) {
+            return focusedWindow
+        }
+
+        // 浏览器扩展弹窗会暂时成为 AXFocusedWindow，但浏览器进程本身仍是前台应用。
+        // 插件窗口被分类器排除后，继续查找 AXMainWindow，让控制条留在浏览器主窗口。
+        guard browserBundleIdentifiers.contains(application.bundleIdentifier ?? "") else {
+            return nil
+        }
+        if let mainWindow = targetWindow(
+            from: applicationElement.copyAttribute(kAXMainWindowAttribute),
+            application: application
+        ) {
+            return mainWindow
+        }
+
+        // 少数 Chromium 版本在插件打开时不提供 AXMainWindow。此时从同一进程的
+        // 可控制标准窗口中选择面积最大的一个，避免控制条随插件弹窗一起消失。
+        guard let rawWindows = applicationElement.copyAttribute(kAXWindowsAttribute),
+              let windows = rawWindows as? [AXUIElement] else {
+            return nil
+        }
+        return windows
+            .compactMap { makeTargetWindow(from: $0, application: application) }
+            .max { first, second in
+                first.frame.width * first.frame.height
+                    < second.frame.width * second.frame.height
+            }
+    }
+
+    private func targetWindow(
+        from rawWindow: CFTypeRef?,
+        application: NSRunningApplication
+    ) -> TargetWindow? {
+        guard let rawWindow,
               CFGetTypeID(rawWindow) == AXUIElementGetTypeID() else {
             return nil
         }
-
         // Core Foundation 不提供可选转换；前面的 CFTypeID 校验保证该转换安全。
-        let window = rawWindow as! AXUIElement
-        return makeTargetWindow(from: window, application: application)
+        return makeTargetWindow(
+            from: rawWindow as! AXUIElement,
+            application: application
+        )
     }
 
     /// 扫描所有正在运行的普通应用，返回当前可控制的非最小化标准窗口。

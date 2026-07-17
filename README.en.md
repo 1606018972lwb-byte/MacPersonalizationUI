@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-Local test version 1.3.1 builds on release 1.2 with improved window classification and settings-window behavior:
+Local test version 1.3.2 builds on release 1.2 with improved browser-popover fallback and window classification:
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Buttons, Permission, Update, Other, and About tabs.
@@ -19,6 +19,8 @@ Local test version 1.3.1 builds on release 1.2 with improved window classificati
 - Native title-bar moves update the overlay directly without an extra main-queue hop or focused-window rescan.
 - A temporary up-to-120Hz AX geometry tracker runs only while the original window is moving and stops automatically after the mouse is released.
 - Browser-extension popovers, menu-like floating panels, and transient windows without native window controls are excluded.
+- Opening a browser extension keeps the control row attached to that browser's main window instead of hiding it or targeting the extension popup.
+- The fallback uses `AXMainWindow` first and then the largest eligible standard window for browser versions that omit that attribute.
 - Real application settings/preferences windows remain eligible, including MacWindowButtons' own settings window.
 - Full-window refresh now prioritizes the actually focused eligible window instead of a previously used background window.
 - Dragging the empty left area moves the target window like a Windows title bar.
@@ -49,4 +51,4 @@ Local test version 1.3.1 builds on release 1.2 with improved window classificati
 
 The main window opens automatically while the application stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon reopens the main window.
 
-The local test package is `dist/MacWindowButtons-1.3.1.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-1.3.2.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
