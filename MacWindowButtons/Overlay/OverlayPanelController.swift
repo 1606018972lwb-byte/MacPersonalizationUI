@@ -20,13 +20,18 @@ private final class OverlayPanel: NSPanel {
 
 /// 使用 AXObserver 接收窗口移动、缩放和焦点变化事件，避免依赖低频轮询追随。
 private final class AccessibilityWindowTracker {
+    enum Change {
+        case geometry
+        case focusOrLifecycle
+    }
+
     private var observer: AXObserver?
     private var applicationElement: AXUIElement?
     private var windowElement: AXUIElement?
     private var trackedIdentifier: WindowIdentifier?
-    private let onWindowChanged: () -> Void
+    private let onWindowChanged: (Change) -> Void
 
-    init(onWindowChanged: @escaping () -> Void) {
+    init(onWindowChanged: @escaping (Change) -> Void) {
         self.onWindowChanged = onWindowChanged
     }
 
@@ -94,9 +99,21 @@ private final class AccessibilityWindowTracker {
         trackedIdentifier = nil
     }
 
-    fileprivate func windowDidChange() {
-        DispatchQueue.main.async { [weak self] in
-            self?.onWindowChanged()
+    fileprivate func windowDidChange(notification: CFString) {
+        let name = notification as String
+        let change: Change = name == kAXMovedNotification as String
+            || name == kAXResizedNotification as String
+            ? .geometry
+            : .focusOrLifecycle
+
+        // Observer 的 RunLoopSource 已安装在主线程。直接处理可省去一次异步排队，
+        // 快速拖动时也不会积压一长串已经过期的位置更新。
+        if Thread.isMainThread {
+            onWindowChanged(change)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.onWindowChanged(change)
+            }
         }
     }
 
@@ -106,14 +123,14 @@ private final class AccessibilityWindowTracker {
 }
 
 private let accessibilityWindowChangeCallback: AXObserverCallback = {
-    _, _, _, context in
+    _, _, notification, context in
     guard let context else {
         return
     }
     Unmanaged<AccessibilityWindowTracker>
         .fromOpaque(context)
         .takeUnretainedValue()
-        .windowDidChange()
+        .windowDidChange(notification: notification)
 }
 
 /// 事件驱动跟随焦点窗口、代理空白行拖动，并转发三个窗口控制动作。
@@ -127,17 +144,20 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     private let buttonsView: WindowButtonsView
 
     private var refreshTimer: Timer?
+    private var motionTrackingTimer: Timer?
+    private var motionTrackingDeadline = Date.distantPast
     private var currentWindow: TargetWindow?
     private var lastExternalWindow: TargetWindow?
     private var settingsObserverIdentifier: UUID?
     private var appearanceObserverIdentifier: UUID?
     private var workspaceObserver: NSObjectProtocol?
+    private var globalMouseMonitor: Any?
     private var dragWindow: TargetWindow?
     private var dragStartMouseLocation: CGPoint?
     private var dragStartAccessibilityFrame: CGRect?
     private var dragStartAppKitFrame: CGRect?
-    private lazy var windowTracker = AccessibilityWindowTracker { [weak self] in
-        self?.refreshOverlay()
+    private lazy var windowTracker = AccessibilityWindowTracker { [weak self] change in
+        self?.trackedWindowDidChange(change)
     }
 
     init(
@@ -201,6 +221,13 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         ) { [weak self] _ in
             self?.refreshOverlay()
         }
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDragged, .leftMouseUp]
+        ) { [weak self] event in
+            DispatchQueue.main.async {
+                self?.handleGlobalMouseEvent(event)
+            }
+        }
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.refreshOverlay()
         }
@@ -213,9 +240,14 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
     func stop() {
         refreshTimer?.invalidate()
         refreshTimer = nil
+        stopMotionTracking()
         if let workspaceObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(workspaceObserver)
             self.workspaceObserver = nil
+        }
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+            self.globalMouseMonitor = nil
         }
         windowTracker.stop()
         currentWindow = nil
@@ -326,24 +358,108 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
             showsRestore: actionService.isMaximizedByThisApp(targetWindow)
         )
 
-        // 在窗口顶部外侧绘制一条与目标窗口等宽的完整占位行。三个按钮靠右排列，
-        // 左侧保持为空；最大化时 WindowActionService 会为整行预留同样的高度。
+        positionOverlay(using: appKitFrame)
+    }
+
+    /// 只更新面板几何位置，不重新读取焦点应用、窗口标题和按钮能力。
+    /// 原生窗口拖动期间走此快速路径，可显著减少 AX 查询和主线程排队。
+    private func positionOverlay(using appKitFrame: CGRect) {
         let overlaySize = CGSize(
             width: appKitFrame.width,
             height: appSettings.controlSize.buttonHeight
         )
-        panel.setContentSize(overlaySize)
+        if panel.frame.size != overlaySize {
+            panel.setContentSize(overlaySize)
+            buttonsView.frame = CGRect(origin: .zero, size: overlaySize)
+        }
         panel.setFrameOrigin(
             CGPoint(
                 x: appKitFrame.minX,
                 y: appKitFrame.maxY - appSettings.controlAppearance.windowOverlap
             )
         )
-        buttonsView.frame = CGRect(origin: .zero, size: overlaySize)
-        panel.orderFrontRegardless()
+        if !panel.isVisible {
+            panel.orderFrontRegardless()
+        }
+    }
+
+    private func trackedWindowDidChange(_ change: AccessibilityWindowTracker.Change) {
+        switch change {
+        case .geometry:
+            motionTrackingDeadline = Date().addingTimeInterval(0.18)
+            updateOverlayFromTrackedWindow()
+            startMotionTrackingIfNeeded()
+        case .focusOrLifecycle:
+            stopMotionTracking()
+            refreshOverlay()
+        }
+    }
+
+    /// 部分应用会降低 AXMoved 通知频率。全局鼠标拖动事件可更早触发一次坐标读取，
+    /// 但只有窗口实际移动时才启动高频计时器，普通内容拖拽不会增加持续负载。
+    private func handleGlobalMouseEvent(_ event: NSEvent) {
+        switch event.type {
+        case .leftMouseDragged:
+            if updateOverlayFromTrackedWindow() {
+                motionTrackingDeadline = Date().addingTimeInterval(0.18)
+                startMotionTrackingIfNeeded()
+            }
+        case .leftMouseUp:
+            motionTrackingDeadline = Date().addingTimeInterval(0.05)
+        default:
+            break
+        }
+    }
+
+    /// 原生标题栏拖动时，AXMoved 通知的频率和到达时间由目标应用决定。
+    /// 收到首个几何通知后短时以最高 120Hz 直接读取已跟踪 AX 元素；鼠标仍按下时
+    /// 持续跟踪，释放后在最后一个通知的收尾窗口结束，不影响平时功耗。
+    private func startMotionTrackingIfNeeded() {
+        guard motionTrackingTimer == nil else {
+            return
+        }
+        let timer = Timer(timeInterval: 1.0 / 120.0, repeats: true) { [weak self] _ in
+            guard let self else {
+                return
+            }
+            updateOverlayFromTrackedWindow()
+            let isPrimaryMouseButtonPressed = NSEvent.pressedMouseButtons & 1 == 1
+            if !isPrimaryMouseButtonPressed && Date() >= motionTrackingDeadline {
+                stopMotionTracking()
+                // 结束后执行一次完整刷新，校正焦点、能力和最终尺寸。
+                refreshOverlay()
+            }
+        }
+        timer.tolerance = 0
+        RunLoop.main.add(timer, forMode: .common)
+        motionTrackingTimer = timer
+    }
+
+    private func stopMotionTracking() {
+        motionTrackingTimer?.invalidate()
+        motionTrackingTimer = nil
+        motionTrackingDeadline = .distantPast
+    }
+
+    @discardableResult
+    private func updateOverlayFromTrackedWindow() -> Bool {
+        guard let updatedWindow = currentWindow?.refreshingFrame(),
+              let appKitFrame = ScreenCoordinateConverter.appKitRect(
+                fromAccessibilityRect: updatedWindow.frame
+              ) else {
+            return false
+        }
+        let didGeometryChange = updatedWindow.frame != currentWindow?.frame
+        currentWindow = updatedWindow
+        lastExternalWindow = updatedWindow
+        if didGeometryChange {
+            positionOverlay(using: appKitFrame)
+        }
+        return didGeometryChange
     }
 
     private func hideOverlay() {
+        stopMotionTracking()
         panel.orderOut(nil)
     }
 

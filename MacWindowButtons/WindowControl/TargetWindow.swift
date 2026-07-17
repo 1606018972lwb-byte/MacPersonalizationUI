@@ -19,6 +19,27 @@ struct TargetWindow {
     var identifier: WindowIdentifier {
         WindowIdentifier(processIdentifier: processIdentifier, elementHash: CFHash(element))
     }
+
+    /// 直接从同一个 AX 窗口元素读取最新坐标，避免拖动期间重新扫描前台应用。
+    func refreshingFrame() -> TargetWindow? {
+        guard let position = element.pointAttribute(kAXPositionAttribute),
+              let size = element.sizeAttribute(kAXSizeAttribute) else {
+            return nil
+        }
+        return TargetWindow(
+            element: element,
+            processIdentifier: processIdentifier,
+            applicationName: applicationName,
+            bundleIdentifier: bundleIdentifier,
+            title: title,
+            frame: CGRect(origin: position, size: size),
+            isMinimized: isMinimized,
+            isFullScreen: isFullScreen,
+            canMinimize: canMinimize,
+            canResize: canResize,
+            canClose: canClose
+        )
+    }
 }
 
 /// 用 PID 和 AX 元素哈希组成窗口状态存储键。
