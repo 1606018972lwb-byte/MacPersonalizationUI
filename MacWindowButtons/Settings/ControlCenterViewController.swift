@@ -215,7 +215,7 @@ final class ControlCenterViewController: NSViewController {
     )
     private let updateStatusLabel = NSTextField(wrappingLabelWithString: "尚未检查更新")
     private lazy var deleteToTrashCheckbox = NSButton(
-        checkboxWithTitle: "按 Delete 移动文件到废纸篓",
+        checkboxWithTitle: "按 Delete 删除文件或推出磁盘",
         target: self,
         action: #selector(toggleDeleteToTrashShortcut(_:))
     )
@@ -665,7 +665,7 @@ final class ControlCenterViewController: NSViewController {
             makeSectionTitle("Finder 文件操作"),
             deleteToTrashCheckbox,
             makeDetailLabel(
-                "启用后，在 Finder 中选中文件并单独按下 Delete，即可使用 Finder 原生方式移到废纸篓。"
+                "启用后，选中已挂载的虚拟磁盘会安全推出；选中普通文件或文件夹则移到废纸篓。"
             ),
             deleteToTrashStatusLabel
         ])
@@ -984,7 +984,7 @@ final class ControlCenterViewController: NSViewController {
             deleteToTrashStatusLabel.stringValue = "默认关闭，勾选后立即启用。"
             deleteToTrashStatusLabel.textColor = .secondaryLabelColor
         } else if permissionManager.isTrusted {
-            deleteToTrashStatusLabel.stringValue = "已启用：Finder 中按 Delete 会将选中文件移到废纸篓。"
+            deleteToTrashStatusLabel.stringValue = "已启用：Delete 会推出虚拟磁盘，或将普通文件移到废纸篓。"
             deleteToTrashStatusLabel.textColor = .systemGreen
         } else {
             deleteToTrashStatusLabel.stringValue = "已启用，但需要辅助功能权限才能监听全局按键。"

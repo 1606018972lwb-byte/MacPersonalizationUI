@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-The current version is 26.0824.04. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
+The current version is 26.0824.05. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -12,9 +12,9 @@ The current version is 26.0824.04. Versions use `YY.MMDD.NN`: two-digit year, mo
 - The checkbox now uses the concise “Silent Launch” title, while its detailed behavior is shown as secondary text below it.
 - Silent launch is enabled by default, so initial launch, login launch, and in-app restart show only the menu bar item instead of opening Settings automatically.
 - Clicking the menu bar item, choosing Open Settings, or launching the app again while it is already running still opens Settings explicitly.
-- A new Shortcuts tab includes an opt-in “Press Delete to move files to Trash” checkbox, which is disabled by default.
+- The Shortcuts tab includes an opt-in “Press Delete to delete files or eject disks” checkbox, which is disabled by default.
 - Finder now provides a Windows-style “Send To → Desktop Shortcut” context submenu that creates Finder aliases for selected files and folders.
-- The shortcut only intercepts Delete while Finder is frontmost and delegates the action to Finder's native Command-Delete behavior, preserving Undo support.
+- The shortcut only intercepts Delete while Finder is frontmost: ejectable volumes use native Command-E, while regular files and folders use native Command-Delete with Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
 - The first Shortcuts action opens macOS Keyboard Shortcuts settings directly.
 - Separate opt-in shortcuts can be recorded for cycling input methods and toggling Chinese/English; both are disabled by default and only act in text fields, search/address fields, multiline editors, and editable web content.
@@ -74,4 +74,4 @@ The current version is 26.0824.04. Versions use `YY.MMDD.NN`: two-digit year, mo
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-26.0824.04.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-26.0824.05.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

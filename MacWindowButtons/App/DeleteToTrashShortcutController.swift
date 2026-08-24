@@ -2,14 +2,15 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 
-/// 将 Finder 中单独按下的 Delete 转换为系统原生的 Command-Delete。
+/// 将 Finder 中单独按下的 Delete 转换为系统原生文件操作。
 ///
-/// Finder 原生负责移动文件、播放反馈以及提供“撤销移到废纸篓”，本工具只负责
-/// 补齐 Windows 用户熟悉的单键入口。事件只在 Finder 位于前台时处理，其他应用
-/// 收到的 Delete 不会被修改。
+/// 可推出的已挂载卷使用 Command-E，普通文件和文件夹使用 Command-Delete。
+/// Finder 原生负责完成操作、播放反馈和显示失败原因；其他应用的 Delete 不受影响。
 final class DeleteToTrashShortcutController {
     private static let deleteKeyCodes: Set<Int64> = [51, 117]
     private static let syntheticEventMarker: Int64 = 0x4D574244
+    private static let commandDeleteKeyCode: CGKeyCode = 51
+    private static let commandEjectKeyCode: CGKeyCode = 14
 
     private let appSettings: AppSettings
     private var eventTap: CFMachPort?
@@ -161,27 +162,256 @@ final class DeleteToTrashShortcutController {
             return nil
         }
 
-        guard let source = CGEventSource(stateID: .combinedSessionState),
-              let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 51, keyDown: true),
-              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 51, keyDown: false)
-        else {
+        let commandKeyCode = isEjectableVolumeSelected()
+            ? Self.commandEjectKeyCode
+            : Self.commandDeleteKeyCode
+        guard postFinderCommand(keyCode: commandKeyCode) else {
             return Unmanaged.passUnretained(event)
         }
-        keyDown.flags = .maskCommand
-        keyUp.flags = .maskCommand
-        keyDown.setIntegerValueField(
-            .eventSourceUserData,
-            value: Self.syntheticEventMarker
-        )
-        keyUp.setIntegerValueField(
-            .eventSourceUserData,
-            value: Self.syntheticEventMarker
-        )
-        keyDown.post(tap: .cgSessionEventTap)
-        keyUp.post(tap: .cgSessionEventTap)
         isWaitingForDeleteKeyUp = true
 
-        // 原始 Delete 必须被吞掉，只让 Finder 收到一次系统原生 Command-Delete。
+        // 原始 Delete 必须被吞掉，只让 Finder 收到一次对应的系统原生命令。
         return nil
+    }
+
+    private func postFinderCommand(keyCode: CGKeyCode) -> Bool {
+        guard let source = CGEventSource(stateID: .combinedSessionState),
+              let keyDown = CGEvent(
+                  keyboardEventSource: source,
+                  virtualKey: keyCode,
+                  keyDown: true
+              ),
+              let keyUp = CGEvent(
+                  keyboardEventSource: source,
+                  virtualKey: keyCode,
+                  keyDown: false
+              ) else {
+            return false
+        }
+
+        for commandEvent in [keyDown, keyUp] {
+            commandEvent.flags = .maskCommand
+            commandEvent.setIntegerValueField(
+                .eventSourceUserData,
+                value: Self.syntheticEventMarker
+            )
+        }
+        keyDown.post(tap: .cgSessionEventTap)
+        keyUp.post(tap: .cgSessionEventTap)
+        return true
+    }
+
+    private func isEjectableVolumeSelected() -> Bool {
+        let selection = selectedFinderItems()
+        let selectedPaths = Set(selection.urls.map {
+            $0.standardizedFileURL.resolvingSymlinksInPath().path
+        })
+        let selectedNames = Set(selection.names.map(normalizedFinderName))
+        guard !selectedPaths.isEmpty || !selectedNames.isEmpty else {
+            return false
+        }
+
+        let resourceKeys: Set<URLResourceKey> = [
+            .volumeIsEjectableKey,
+            .volumeIsRemovableKey,
+            .volumeNameKey
+        ]
+        let mountedVolumes = FileManager.default.mountedVolumeURLs(
+            includingResourceValuesForKeys: Array(resourceKeys),
+            options: [.skipHiddenVolumes]
+        ) ?? []
+
+        return mountedVolumes.contains { volumeURL in
+            guard let values = try? volumeURL.resourceValues(forKeys: resourceKeys),
+                  values.volumeIsEjectable == true || values.volumeIsRemovable == true else {
+                return false
+            }
+            let path = volumeURL.standardizedFileURL.resolvingSymlinksInPath().path
+            if selectedPaths.contains(path) {
+                return true
+            }
+
+            // Finder 侧边栏的选中行通常没有 AXURL，只暴露卷的显示名称。
+            let volumeNames = [values.volumeName, volumeURL.lastPathComponent]
+                .compactMap { $0 }
+                .map(normalizedFinderName)
+            return volumeNames.contains { selectedNames.contains($0) }
+        }
+    }
+
+    private func selectedFinderItems() -> (urls: [URL], names: [String]) {
+        guard let finder = NSWorkspace.shared.frontmostApplication,
+              finder.bundleIdentifier == "com.apple.finder" else {
+            return ([], [])
+        }
+        let applicationElement = AXUIElementCreateApplication(finder.processIdentifier)
+        let focusedElement = axElement(
+            from: applicationElement.copyAttribute(kAXFocusedUIElementAttribute)
+        )
+
+        var focusedSelectionElements: [AXUIElement] = []
+        var focusedSelectionURLs: [URL] = []
+        var element = focusedElement
+        for _ in 0..<6 {
+            guard let currentElement = element else {
+                break
+            }
+            focusedSelectionElements.append(contentsOf: selectedElements(in: currentElement))
+            if currentElement.boolAttribute(kAXSelectedAttribute) == true {
+                focusedSelectionURLs.append(
+                    contentsOf: urls(in: currentElement, remainingDepth: 4)
+                )
+            }
+            element = axElement(from: currentElement.copyAttribute(kAXParentAttribute))
+        }
+
+        // 点击 Finder 侧边栏后，键盘焦点可能仍属于内容区。此时从整个当前
+        // 窗口查找所有 AXSelectedRows/AXSelectedChildren，才能发现侧边栏选中行。
+        guard let focusedWindow = axElement(
+            from: applicationElement.copyAttribute(kAXFocusedWindowAttribute)
+        ) else {
+            let selection = finderItems(from: focusedSelectionElements)
+            return (
+                uniqueURLs(selection.urls + focusedSelectionURLs),
+                selection.names
+            )
+        }
+        let windowSelectionElements = selectedElementsInHierarchy(
+            from: focusedWindow,
+            maximumDepth: 9,
+            maximumElements: 500
+        )
+        let selection = finderItems(
+            from: focusedSelectionElements + windowSelectionElements
+        )
+        return (
+            uniqueURLs(selection.urls + focusedSelectionURLs),
+            selection.names
+        )
+    }
+
+    private func selectedElementsInHierarchy(
+        from root: AXUIElement,
+        maximumDepth: Int,
+        maximumElements: Int
+    ) -> [AXUIElement] {
+        var queue: [(element: AXUIElement, depth: Int)] = [(root, 0)]
+        var result: [AXUIElement] = []
+        var visited = 0
+        var queueIndex = 0
+
+        while queueIndex < queue.count, visited < maximumElements {
+            let current = queue[queueIndex]
+            queueIndex += 1
+            visited += 1
+            result.append(contentsOf: selectedElements(in: current.element))
+
+            guard current.depth < maximumDepth,
+                  let children = current.element.copyAttribute(kAXChildrenAttribute)
+                    as? [AXUIElement] else {
+                continue
+            }
+            queue.append(contentsOf: children.map { ($0, current.depth + 1) })
+        }
+        return result
+    }
+
+    private func finderItems(
+        from selectedElements: [AXUIElement]
+    ) -> (urls: [URL], names: [String]) {
+        var urls: [URL] = []
+        var names: [String] = []
+
+        for selectedElement in selectedElements {
+            let elementURLs = self.urls(in: selectedElement, remainingDepth: 4)
+            if elementURLs.isEmpty {
+                names.append(contentsOf: strings(in: selectedElement, remainingDepth: 4))
+            } else {
+                urls.append(contentsOf: elementURLs)
+            }
+        }
+        return (uniqueURLs(urls), uniqueStrings(names))
+    }
+
+    private func selectedElements(in element: AXUIElement) -> [AXUIElement] {
+        let attributes = [kAXSelectedRowsAttribute, kAXSelectedChildrenAttribute]
+        var result: [AXUIElement] = []
+        for attribute in attributes {
+            if let selected = element.copyAttribute(attribute) as? [AXUIElement],
+               !selected.isEmpty {
+                result.append(contentsOf: selected)
+            }
+        }
+        return result
+    }
+
+    private func urls(in element: AXUIElement, remainingDepth: Int) -> [URL] {
+        var result: [URL] = []
+        if let url = urlAttribute(of: element) {
+            result.append(url)
+        }
+        guard remainingDepth > 0,
+              let children = element.copyAttribute(kAXChildrenAttribute) as? [AXUIElement] else {
+            return result
+        }
+        for child in children {
+            result.append(contentsOf: urls(in: child, remainingDepth: remainingDepth - 1))
+        }
+        return result
+    }
+
+    private func urlAttribute(of element: AXUIElement) -> URL? {
+        guard let value = element.copyAttribute(kAXURLAttribute) else {
+            return nil
+        }
+        if let url = value as? URL {
+            return url
+        }
+        if let text = value as? String {
+            return URL(string: text)
+        }
+        return nil
+    }
+
+    private func strings(in element: AXUIElement, remainingDepth: Int) -> [String] {
+        var result: [String] = []
+        for attribute in [kAXValueAttribute, kAXTitleAttribute, kAXDescriptionAttribute] {
+            if let value = element.copyAttribute(attribute) as? String,
+               !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                result.append(value)
+            }
+        }
+        guard remainingDepth > 0,
+              let children = element.copyAttribute(kAXChildrenAttribute) as? [AXUIElement] else {
+            return result
+        }
+        for child in children {
+            result.append(contentsOf: strings(in: child, remainingDepth: remainingDepth - 1))
+        }
+        return result
+    }
+
+    private func axElement(from value: CFTypeRef?) -> AXUIElement? {
+        guard let value,
+              CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            return nil
+        }
+        return (value as! AXUIElement)
+    }
+
+    private func uniqueURLs(_ urls: [URL]) -> [URL] {
+        var paths: Set<String> = []
+        return urls.filter { paths.insert($0.standardizedFileURL.path).inserted }
+    }
+
+    private func uniqueStrings(_ strings: [String]) -> [String] {
+        var values: Set<String> = []
+        return strings.filter { values.insert(normalizedFinderName($0)).inserted }
+    }
+
+    private func normalizedFinderName(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
+            .lowercased()
     }
 }

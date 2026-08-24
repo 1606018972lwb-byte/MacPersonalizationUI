@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-当前版本为 26.0824.04。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
+当前版本为 26.0824.05。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -15,9 +15,9 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - “静默启动”默认开启；不自动打开设置窗口等行为说明显示在选项下方的小字区域。
 - 首次启动、登录启动和应用内重新启动时只显示菜单栏图标，不自动弹出设置窗口。
 - 点击菜单栏图标、右键选择打开设置，或在应用已经运行时再次启动，仍会主动显示设置窗口。
-- 新增“快捷键”页，“按 Delete 移动文件到废纸篓”默认关闭，可通过复选框明确启用。
+- “快捷键”页提供“按 Delete 删除文件或推出磁盘”开关，默认关闭，可通过复选框明确启用。
 - Finder 右键菜单新增 Windows 风格的“发送到 → 桌面快捷方式”，支持同时为多个文件或文件夹在桌面创建 Finder 别名。
-- Delete 快捷键只在 Finder 位于最前方时生效，并转换为 Finder 原生的 `Command-Delete`，支持系统撤销操作。
+- Delete 快捷键只在 Finder 位于最前方时生效：可推出卷使用原生 `Command-E`，普通文件和文件夹使用原生 `Command-Delete` 并支持系统撤销。
 - 长按 Delete 只执行一次，避免按键重复连续移动 Finder 后续选中的文件；其他应用中的 Delete 不受影响。
 - “快捷键”页首项可以直接打开 macOS 的“键盘快捷键”设置。
 - 可分别录入并启用“切换输入法”和“切换中英文”局部快捷键，两项默认关闭，仅在文本框、搜索/地址栏、多行编辑器和网页可编辑区域生效。
@@ -82,7 +82,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0824.04.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0824.05.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
@@ -96,7 +96,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
     “启动时静默运行”默认开启，开机后不会自动弹出设置窗口。
 12. 在“更新”页可以设置检查周期、手动检查及自动安装。自动安装完成后应用会自动重启。
 13. 在“其他”页选择“与窗口一体”，完整控制行仍位于窗口上方，但按钮以外区域透明；按住透明空白处即可由控制行直接拖动窗口。
-14. 如需在 Finder 中单按 Delete 删除文件，请在“快捷键”页勾选对应选项；该功能需要辅助功能权限。
+14. 如需在 Finder 中单按 Delete 删除文件或推出磁盘，请在“快捷键”页勾选对应选项；该功能需要辅助功能权限。
 15. 如需自定义输入法切换，在“快捷键”页点击录入框，按下单修饰键、组合修饰键或“修饰键＋普通键”，再勾选对应功能；辅助功能权限用于判断当前焦点是否为文本输入区域。
 16. 如需使用“发送到”，请在“系统设置 → 通用 → 登录项与扩展 → Finder 扩展”中启用“MacWindowButtons 发送到”；也可右键菜单栏图标并选择“打开 Finder 扩展设置”。
 
@@ -119,7 +119,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 9. `LaunchAtLoginController` 通过 `SMAppService.mainApp` 注册登录项并处理系统批准状态。
 10. `UpdateManager` 查询 GitHub/Gitee Release、比较语义版本，并负责经过安全校验的 DMG 更新流程。
 11. `ControlCenterViewController` 使用纯 AppKit 构建直接显示的常规设置以及权限、更新、其他、快捷键和关于页面。
-12. `DeleteToTrashShortcutController` 使用事件监听把 Finder 中的单独 Delete 安全转换为原生 `Command-Delete`。
+12. `DeleteToTrashShortcutController` 使用事件监听把 Finder 中的单独 Delete 转换为原生 `Command-E` 或 `Command-Delete`。
 13. `InputMethodShortcutController` 监听用户指定的按键，在 AX 焦点为文本输入控件时通过 Text Input Source Services 切换输入源。
 
 ## 项目目录

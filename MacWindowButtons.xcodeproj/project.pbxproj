@@ -419,7 +419,7 @@
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.04;
+				MARKETING_VERSION = 26.0824.05;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -438,7 +438,7 @@
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.04;
+				MARKETING_VERSION = 26.0824.05;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -458,7 +458,7 @@
 				INFOPLIST_FILE = FinderExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.04;
+				MARKETING_VERSION = 26.0824.05;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -479,7 +479,7 @@
 				INFOPLIST_FILE = FinderExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.04;
+				MARKETING_VERSION = 26.0824.05;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
