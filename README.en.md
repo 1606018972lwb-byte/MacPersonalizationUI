@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-The current version is 26.0824.01. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
+The current version is 26.0824.02. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
 
 - Accessibility permission prompting and a System Settings shortcut.
 - A classic macOS preferences layout with General, Permission, Update, Other, Shortcuts, and About tabs.
@@ -74,4 +74,4 @@ The current version is 26.0824.01. Versions use `YY.MMDD.NN`: two-digit year, mo
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-26.0824.01.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-26.0824.02.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.

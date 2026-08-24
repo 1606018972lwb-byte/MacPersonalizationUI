@@ -1,4 +1,8 @@
 
+v26.0824.02
+- 修复 Finder 扩展缺少 App Sandbox entitlement 而被 macOS 拒绝加载，导致右键菜单不显示“发送到 → 桌面快捷方式”的问题。
+
+
 v26.0824.01
 - 版本号改用 `YY.MMDD.NN` 格式，分别表示两位年份、月日和当天第几次修改。
 - Finder 右键菜单新增 Windows 风格的“发送到 → 桌面快捷方式”。
@@ -7,7 +11,6 @@ v26.0824.01
 - 最大化以目标窗口主要所在显示器的 `visibleFrame` 为基准，完整使用菜单栏和 Dock 之间的可用区域，并为顶部控制条预留一行。
 - 调整 AX 窗口尺寸的写入顺序，并对 VS Code/Electron 的延迟布局执行两次复核校正，避免最大化后停留在较小尺寸。
 - DMG 构建流程新增 Finder 扩展独立签名和嵌套签名验证。
-- 修复 Finder 扩展缺少 App Sandbox entitlement 而被 macOS 拒绝加载的问题。
 
 
 
