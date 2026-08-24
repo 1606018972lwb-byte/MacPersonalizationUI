@@ -3,51 +3,37 @@ import Foundation
 
 /// 接收 Finder 扩展发来的选中项，并在用户桌面创建 Finder 别名。
 final class DesktopShortcutController {
-    static let requestNotification = Notification.Name(
-        "com.lwb.MacWindowButtons.createDesktopShortcuts"
-    )
+    private static let requestScheme = "macwindowbuttons"
+    private static let requestHost = "create-desktop-shortcuts"
 
     private enum RequestKey {
         static let paths = "paths"
     }
 
     private let fileManager: FileManager
-    private var isStarted = false
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
     }
 
-    func start() {
-        guard !isStarted else {
-            return
+    @discardableResult
+    func handle(_ url: URL) -> Bool {
+        guard url.scheme == Self.requestScheme,
+              url.host == Self.requestHost,
+              let components = URLComponents(
+                  url: url,
+                  resolvingAgainstBaseURL: false
+              ),
+              let encodedPaths = components.queryItems?.first(
+                  where: { $0.name == RequestKey.paths }
+              )?.value,
+              let pathData = Data(base64Encoded: encodedPaths),
+              let paths = try? JSONDecoder().decode([String].self, from: pathData) else {
+            return false
         }
-        isStarted = true
-        DistributedNotificationCenter.default().addObserver(
-            self,
-            selector: #selector(handleShortcutRequest(_:)),
-            name: Self.requestNotification,
-            object: nil
-        )
-    }
 
-    func stop() {
-        guard isStarted else {
-            return
-        }
-        DistributedNotificationCenter.default().removeObserver(
-            self,
-            name: Self.requestNotification,
-            object: nil
-        )
-        isStarted = false
-    }
-
-    @objc private func handleShortcutRequest(_ notification: Notification) {
-        guard let paths = notification.userInfo?[RequestKey.paths] as? [String] else {
-            return
-        }
         createDesktopShortcuts(forPaths: Array(paths.prefix(100)))
+        return true
     }
 
     private func createDesktopShortcuts(forPaths paths: [String]) {
@@ -96,7 +82,10 @@ final class DesktopShortcutController {
     }
 
     private func availableDestination(for sourceURL: URL, on desktopURL: URL) -> URL {
-        let sourceName = sourceURL.deletingPathExtension().lastPathComponent
+        let displayName = NSMetadataItem(url: sourceURL)?.value(
+            forAttribute: NSMetadataItemDisplayNameKey
+        ) as? String ?? sourceURL.lastPathComponent
+        let sourceName = (displayName as NSString).deletingPathExtension
         let baseName = "\(sourceName) - 快捷方式"
         var destinationURL = desktopURL.appendingPathComponent(baseName)
         var copyNumber = 2
@@ -108,9 +97,5 @@ final class DesktopShortcutController {
             copyNumber += 1
         }
         return destinationURL
-    }
-
-    deinit {
-        stop()
     }
 }

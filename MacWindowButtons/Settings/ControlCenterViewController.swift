@@ -105,7 +105,7 @@ private final class ShortcutRecorderButton: NSButton {
 
 /// 使用传统 macOS 偏好设置布局展示应用配置。
 ///
-/// 顶部分段控件用于切换“常规、权限、更新、其他、快捷键、关于”，所有页面共用同一个
+/// 顶部分段控件用于切换“常规、权限、更新、其他、快捷键、鼠标右键、关于”，所有页面共用同一个
 /// 分组内容框，视觉结构接近经典桌面软件设置窗口。
 final class ControlCenterViewController: NSViewController {
     private enum SettingsPage: Int, CaseIterable {
@@ -114,6 +114,7 @@ final class ControlCenterViewController: NSViewController {
         case update
         case other
         case shortcuts
+        case contextMenu
         case about
 
         var title: String {
@@ -123,6 +124,7 @@ final class ControlCenterViewController: NSViewController {
             case .update: "更新"
             case .other: "其他"
             case .shortcuts: "快捷键"
+            case .contextMenu: "鼠标右键"
             case .about: "关于"
             }
         }
@@ -134,6 +136,7 @@ final class ControlCenterViewController: NSViewController {
     private let launchAtLoginController: LaunchAtLoginController
     private let updateManager: UpdateManager
     private let inputMethodShortcutController: InputMethodShortcutController
+    private let finderContextMenuController: FinderContextMenuController
     private weak var windowRefresher: WindowOverlayRefreshing?
 
     private let permissionBox = NSBox()
@@ -240,6 +243,17 @@ final class ControlCenterViewController: NSViewController {
     )
     private let inputMethodShortcutStatusLabel = NSTextField(wrappingLabelWithString: "")
     private let chineseEnglishShortcutStatusLabel = NSTextField(wrappingLabelWithString: "")
+    private lazy var finderContextMenuCheckbox = NSButton(
+        checkboxWithTitle: "启用 Finder 鼠标右键菜单",
+        target: self,
+        action: #selector(toggleFinderContextMenu(_:))
+    )
+    private lazy var desktopShortcutMenuItemCheckbox = NSButton(
+        checkboxWithTitle: "桌面快捷方式",
+        target: self,
+        action: #selector(toggleDesktopShortcutMenuItem(_:))
+    )
+    private let finderContextMenuStatusLabel = NSTextField(wrappingLabelWithString: "")
     private lazy var controlAppearancePopup = NSPopUpButton(
         frame: .zero,
         pullsDown: false
@@ -254,6 +268,7 @@ final class ControlCenterViewController: NSViewController {
         launchAtLoginController: LaunchAtLoginController,
         updateManager: UpdateManager,
         inputMethodShortcutController: InputMethodShortcutController,
+        finderContextMenuController: FinderContextMenuController,
         windowRefresher: WindowOverlayRefreshing
     ) {
         self.applicationState = applicationState
@@ -262,6 +277,7 @@ final class ControlCenterViewController: NSViewController {
         self.launchAtLoginController = launchAtLoginController
         self.updateManager = updateManager
         self.inputMethodShortcutController = inputMethodShortcutController
+        self.finderContextMenuController = finderContextMenuController
         self.windowRefresher = windowRefresher
         super.init(nibName: nil, bundle: nil)
         updateManager.onStateChange = { [weak self] in
@@ -269,6 +285,9 @@ final class ControlCenterViewController: NSViewController {
         }
         inputMethodShortcutController.onStateChange = { [weak self] in
             self?.refreshShortcutInterface()
+        }
+        finderContextMenuController.onStateChange = { [weak self] in
+            self?.refreshFinderContextMenuInterface()
         }
         preferredContentSize = CGSize(width: 640, height: 500)
     }
@@ -312,6 +331,7 @@ final class ControlCenterViewController: NSViewController {
             makeUpdatePage(),
             makeOtherPage(),
             makeShortcutsPage(),
+            makeContextMenuPage(),
             makeAboutPage()
         ]
         pageViews.enumerated().forEach { index, page in
@@ -329,7 +349,7 @@ final class ControlCenterViewController: NSViewController {
         NSLayoutConstraint.activate([
             pageControl.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 12),
             pageControl.centerXAnchor.constraint(equalTo: backgroundView.centerXAnchor),
-            pageControl.widthAnchor.constraint(equalToConstant: 510),
+            pageControl.widthAnchor.constraint(equalToConstant: 570),
 
             contentBox.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: 16),
             contentBox.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -16),
@@ -369,6 +389,7 @@ final class ControlCenterViewController: NSViewController {
         refreshUpdateInterface()
         refreshAppearanceInterface()
         refreshShortcutInterface()
+        refreshFinderContextMenuInterface()
     }
 
     /// 权限刚生效时自动启用功能并立即扫描窗口。
@@ -656,6 +677,57 @@ final class ControlCenterViewController: NSViewController {
         return pinStackToPage(stack)
     }
 
+    private func makeContextMenuPage() -> NSView {
+        finderContextMenuCheckbox.font = .systemFont(ofSize: 13)
+        desktopShortcutMenuItemCheckbox.font = .systemFont(ofSize: 13)
+        finderContextMenuStatusLabel.font = .systemFont(ofSize: 11)
+        finderContextMenuStatusLabel.textColor = .secondaryLabelColor
+        finderContextMenuStatusLabel.maximumNumberOfLines = 3
+
+        let groupBox = NSBox()
+        groupBox.boxType = .custom
+        groupBox.titlePosition = .noTitle
+        groupBox.cornerRadius = 5
+        groupBox.borderWidth = 1
+        groupBox.borderColor = .separatorColor
+        groupBox.fillColor = NSColor.controlBackgroundColor.withAlphaComponent(0.26)
+        groupBox.translatesAutoresizingMaskIntoConstraints = false
+
+        let groupRow = NSStackView(views: [
+            desktopShortcutMenuItemCheckbox,
+            makeFlexibleSpacer()
+        ])
+        groupRow.orientation = .horizontal
+        groupRow.alignment = .centerY
+        groupRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let groupContent = NSView()
+        groupContent.addSubview(groupRow)
+        groupBox.contentView = groupContent
+        NSLayoutConstraint.activate([
+            groupRow.leadingAnchor.constraint(equalTo: groupContent.leadingAnchor, constant: 14),
+            groupRow.trailingAnchor.constraint(equalTo: groupContent.trailingAnchor, constant: -14),
+            groupRow.topAnchor.constraint(equalTo: groupContent.topAnchor, constant: 12),
+            groupRow.bottomAnchor.constraint(equalTo: groupContent.bottomAnchor, constant: -12),
+            groupBox.heightAnchor.constraint(equalToConstant: 48)
+        ])
+
+        let stack = NSStackView(views: [
+            finderContextMenuCheckbox,
+            makeDetailLabel("控制 MacWindowButtons 是否向 Finder 注册鼠标右键菜单。"),
+            finderContextMenuStatusLabel,
+            makeSeparator(),
+            makeSectionTitle("发送到"),
+            groupBox,
+            makeDetailLabel("在 Finder 中选中文件或文件夹后，可创建不复制原文件的桌面替身。")
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 11
+        groupBox.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return pinStackToPage(stack)
+    }
+
     private func makeAboutPage() -> NSView {
         let iconView = NSImageView(image: NSApp.applicationIconImage)
         iconView.imageScaling = .scaleProportionallyUpOrDown
@@ -920,6 +992,30 @@ final class ControlCenterViewController: NSViewController {
         }
     }
 
+    private func refreshFinderContextMenuInterface() {
+        guard isViewLoaded else {
+            return
+        }
+
+        finderContextMenuCheckbox.state = appSettings.isFinderContextMenuEnabled
+            ? .on
+            : .off
+        desktopShortcutMenuItemCheckbox.state = appSettings.isDesktopShortcutMenuItemEnabled
+            ? .on
+            : .off
+        finderContextMenuCheckbox.isEnabled = !finderContextMenuController.isApplying
+        desktopShortcutMenuItemCheckbox.isEnabled = appSettings.isFinderContextMenuEnabled
+            && !finderContextMenuController.isApplying
+        finderContextMenuStatusLabel.stringValue = finderContextMenuController.statusText
+        if finderContextMenuController.hasError {
+            finderContextMenuStatusLabel.textColor = .systemOrange
+        } else if case .enabled = finderContextMenuController.registrationState {
+            finderContextMenuStatusLabel.textColor = .systemGreen
+        } else {
+            finderContextMenuStatusLabel.textColor = .secondaryLabelColor
+        }
+    }
+
     private func updateShortcutStatus(
         _ label: NSTextField,
         action: InputMethodShortcutController.Action,
@@ -1065,6 +1161,16 @@ final class ControlCenterViewController: NSViewController {
         if enabled && !permissionManager.isTrusted {
             permissionManager.requestPermissionFromUser()
         }
+    }
+
+    @objc private func toggleFinderContextMenu(_ sender: NSButton) {
+        finderContextMenuController.setContextMenuEnabled(sender.state == .on)
+        refreshFinderContextMenuInterface()
+    }
+
+    @objc private func toggleDesktopShortcutMenuItem(_ sender: NSButton) {
+        finderContextMenuController.setDesktopShortcutEnabled(sender.state == .on)
+        refreshFinderContextMenuInterface()
     }
 
     @objc private func openKeyboardShortcutSettings() {

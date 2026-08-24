@@ -28,6 +28,7 @@
 		A10000000000000000000019 /* DeleteToTrashShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* DeleteToTrashShortcutController.swift */; };
 		A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* InputMethodShortcutController.swift */; };
 		A10000000000000000000021 /* DesktopShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* DesktopShortcutController.swift */; };
+		A10000000000000000000022 /* FinderContextMenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000025 /* FinderContextMenuController.swift */; };
 		F10000000000000000000001 /* FinderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* FinderSync.swift */; };
 		F10000000000000000000002 /* MacWindowButtonsFinder.appex in Embed Finder Extensions */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* MacWindowButtonsFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -81,6 +82,7 @@
 		A20000000000000000000022 /* DeleteToTrashShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteToTrashShortcutController.swift; sourceTree = "<group>"; };
 		A20000000000000000000023 /* InputMethodShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodShortcutController.swift; sourceTree = "<group>"; };
 		A20000000000000000000024 /* DesktopShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopShortcutController.swift; sourceTree = "<group>"; };
+		A20000000000000000000025 /* FinderContextMenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderContextMenuController.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		F20000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F20000000000000000000003 /* MacWindowButtonsFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacWindowButtonsFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -155,6 +157,7 @@
 				A20000000000000000000022 /* DeleteToTrashShortcutController.swift */,
 				A20000000000000000000023 /* InputMethodShortcutController.swift */,
 				A20000000000000000000024 /* DesktopShortcutController.swift */,
+				A20000000000000000000025 /* FinderContextMenuController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -347,6 +350,7 @@
 				A10000000000000000000019 /* DeleteToTrashShortcutController.swift in Sources */,
 				A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */,
 				A10000000000000000000021 /* DesktopShortcutController.swift in Sources */,
+				A10000000000000000000022 /* FinderContextMenuController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -415,7 +419,7 @@
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.02;
+				MARKETING_VERSION = 26.0824.03;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -434,7 +438,7 @@
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.02;
+				MARKETING_VERSION = 26.0824.03;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -454,7 +458,7 @@
 				INFOPLIST_FILE = FinderExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.02;
+				MARKETING_VERSION = 26.0824.03;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -475,7 +479,7 @@
 				INFOPLIST_FILE = FinderExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.02;
+				MARKETING_VERSION = 26.0824.03;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

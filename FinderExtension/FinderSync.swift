@@ -3,9 +3,8 @@ import FinderSync
 
 /// 为 Finder 选中项提供 Windows 风格的“发送到”子菜单。
 final class FinderSync: FIFinderSync {
-    private static let requestNotification = Notification.Name(
-        "com.lwb.MacWindowButtons.createDesktopShortcuts"
-    )
+    private static let requestScheme = "macwindowbuttons"
+    private static let requestHost = "create-desktop-shortcuts"
     private static let pathsKey = "paths"
 
     override init() {
@@ -48,46 +47,37 @@ final class FinderSync: FIFinderSync {
             return
         }
 
-        if isContainingApplicationRunning {
-            postRequest(for: selectedURLs)
-        } else {
-            activateContainingApplication { [weak self] in
-                self?.postRequest(for: selectedURLs)
-            }
+        guard let pathData = try? JSONEncoder().encode(
+            Array(selectedURLs.prefix(100)).map(\.path)
+        ) else {
+            return
         }
-    }
 
-    private var isContainingApplicationRunning: Bool {
-        !NSRunningApplication.runningApplications(
-            withBundleIdentifier: "com.lwb.MacWindowButtons"
-        ).isEmpty
-    }
+        var components = URLComponents()
+        components.scheme = Self.requestScheme
+        components.host = Self.requestHost
+        components.queryItems = [
+            URLQueryItem(
+                name: Self.pathsKey,
+                value: pathData.base64EncodedString()
+            )
+        ]
+        guard let requestURL = components.url else {
+            return
+        }
 
-    private func activateContainingApplication(completion: @escaping () -> Void) {
-        let appURL = Bundle.main.bundleURL
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
-        NSWorkspace.shared.openApplication(
-            at: appURL,
+        NSWorkspace.shared.open(
+            requestURL,
             configuration: configuration
         ) { _, error in
             if let error {
-                NSLog("[MacWindowButtonsFinder] 无法启动主程序：%@", error.localizedDescription)
-                return
+                NSLog(
+                    "[MacWindowButtonsFinder] 无法发送桌面快捷方式请求：%@",
+                    error.localizedDescription
+                )
             }
-            // 等主程序完成 applicationDidFinishLaunching 并注册分布式通知监听。
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: completion)
         }
-    }
-
-    private func postRequest(for urls: [URL]) {
-        DistributedNotificationCenter.default().post(
-            name: Self.requestNotification,
-            object: nil,
-            userInfo: [Self.pathsKey: urls.map(\.path)]
-        )
     }
 }

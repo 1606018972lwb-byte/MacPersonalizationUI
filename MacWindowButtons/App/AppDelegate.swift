@@ -78,6 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var inputMethodShortcutController = InputMethodShortcutController(
         appSettings: appSettings
     )
+    private lazy var finderContextMenuController = FinderContextMenuController(
+        appSettings: appSettings
+    )
     private let desktopShortcutController = DesktopShortcutController()
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
@@ -135,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             launchAtLoginController: launchAtLoginController,
             updateManager: updateManager,
             inputMethodShortcutController: inputMethodShortcutController,
+            finderContextMenuController: finderContextMenuController,
             windowRefresher: overlayController
         )
         statusBarController = statusController
@@ -142,7 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayController.start()
         deleteShortcutController.start()
         inputMethodShortcutController.start()
-        desktopShortcutController.start()
+        finderContextMenuController.start()
         updateManager.start()
 
         // 默认静默进入菜单栏；关闭“静默启动”后保留原有的首次启动弹窗行为。
@@ -158,7 +162,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayPanelController?.stop()
         deleteShortcutController.stop()
         inputMethodShortcutController.stop()
-        desktopShortcutController.stop()
+    }
+
+    /// 接收 Sandbox Finder 扩展通过自定义 URL scheme 发来的快捷方式请求。
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            _ = desktopShortcutController.handle(url)
+        }
     }
 
     /// 强制启动第二个进程时，由单实例协调器把启动意图转发到这里。

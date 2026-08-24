@@ -143,6 +143,8 @@ final class AppSettings {
         static let chineseEnglishShortcutEnabled = "chineseEnglishShortcutEnabled"
         static let chineseEnglishShortcutKeyCode = "chineseEnglishShortcutKeyCode"
         static let chineseEnglishShortcutModifiers = "chineseEnglishShortcutModifiers"
+        static let finderContextMenuEnabled = "finderContextMenuEnabled"
+        static let desktopShortcutMenuItemEnabled = "desktopShortcutMenuItemEnabled"
     }
 
     private let defaults: UserDefaults
@@ -162,6 +164,8 @@ final class AppSettings {
     private(set) var inputMethodShortcut: GlobalKeyboardShortcut?
     private(set) var isChineseEnglishShortcutEnabled: Bool
     private(set) var chineseEnglishShortcut: GlobalKeyboardShortcut?
+    private(set) var isFinderContextMenuEnabled: Bool
+    private(set) var isDesktopShortcutMenuItemEnabled: Bool
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -227,6 +231,12 @@ final class AppSettings {
         } else {
             chineseEnglishShortcut = nil
         }
+        isFinderContextMenuEnabled = defaults.object(
+            forKey: Key.finderContextMenuEnabled
+        ) as? Bool ?? true
+        isDesktopShortcutMenuItemEnabled = defaults.object(
+            forKey: Key.desktopShortcutMenuItemEnabled
+        ) as? Bool ?? true
     }
 
     /// 保存按钮大小，并通知菜单和悬浮面板立即刷新。
@@ -356,6 +366,16 @@ final class AppSettings {
     func setChineseEnglishShortcutEnabled(_ enabled: Bool) {
         isChineseEnglishShortcutEnabled = enabled
         defaults.set(enabled, forKey: Key.chineseEnglishShortcutEnabled)
+    }
+
+    func setFinderContextMenuEnabled(_ enabled: Bool) {
+        isFinderContextMenuEnabled = enabled
+        defaults.set(enabled, forKey: Key.finderContextMenuEnabled)
+    }
+
+    func setDesktopShortcutMenuItemEnabled(_ enabled: Bool) {
+        isDesktopShortcutMenuItemEnabled = enabled
+        defaults.set(enabled, forKey: Key.desktopShortcutMenuItemEnabled)
     }
 
 }

@@ -24,6 +24,7 @@ final class StatusBarController: NSObject {
         launchAtLoginController: LaunchAtLoginController,
         updateManager: UpdateManager,
         inputMethodShortcutController: InputMethodShortcutController,
+        finderContextMenuController: FinderContextMenuController,
         windowRefresher: WindowOverlayRefreshing
     ) {
         self.permissionManager = permissionManager
@@ -36,6 +37,7 @@ final class StatusBarController: NSObject {
             launchAtLoginController: launchAtLoginController,
             updateManager: updateManager,
             inputMethodShortcutController: inputMethodShortcutController,
+            finderContextMenuController: finderContextMenuController,
             windowRefresher: windowRefresher
         )
         controlCenterWindow = NSWindow(
