@@ -530,11 +530,31 @@ final class OverlayPanelController: NSObject, WindowOverlayRefreshing {
         guard let currentWindow else {
             return
         }
-        _ = actionService.toggleMaximize(
+        let didChangeFrame = actionService.toggleMaximize(
             currentWindow,
             reservedTopHeight: reservedTopHeight
         )
+        if didChangeFrame {
+            scheduleMaximizeCorrection(for: currentWindow, after: 0.08)
+            scheduleMaximizeCorrection(for: currentWindow, after: 0.25)
+        }
         refreshOverlayAfterAction()
+    }
+
+    private func scheduleMaximizeCorrection(
+        for targetWindow: TargetWindow,
+        after delay: TimeInterval
+    ) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self,
+                  let refreshedWindow = targetWindow.refreshingFrame() else {
+                return
+            }
+            _ = actionService.correctMaximizedFrameIfNeeded(
+                for: refreshedWindow,
+                reservedTopHeight: reservedTopHeight
+            )
+        }
     }
 
     @objc private func closeWindow() {

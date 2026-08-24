@@ -27,7 +27,34 @@
 		A10000000000000000000018 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000021 /* UpdateManager.swift */; };
 		A10000000000000000000019 /* DeleteToTrashShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000022 /* DeleteToTrashShortcutController.swift */; };
 		A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* InputMethodShortcutController.swift */; };
+		A10000000000000000000021 /* DesktopShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* DesktopShortcutController.swift */; };
+		F10000000000000000000001 /* FinderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* FinderSync.swift */; };
+		F10000000000000000000002 /* MacWindowButtonsFinder.appex in Embed Finder Extensions */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* MacWindowButtonsFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FA0000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A60000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F50000000000000000000001;
+			remoteInfo = MacWindowButtonsFinder;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F60000000000000000000001 /* Embed Finder Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F10000000000000000000002 /* MacWindowButtonsFinder.appex in Embed Finder Extensions */,
+			);
+			name = "Embed Finder Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -53,10 +80,21 @@
 		A20000000000000000000021 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		A20000000000000000000022 /* DeleteToTrashShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteToTrashShortcutController.swift; sourceTree = "<group>"; };
 		A20000000000000000000023 /* InputMethodShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodShortcutController.swift; sourceTree = "<group>"; };
+		A20000000000000000000024 /* DesktopShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopShortcutController.swift; sourceTree = "<group>"; };
+		F20000000000000000000001 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F20000000000000000000003 /* MacWindowButtonsFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacWindowButtonsFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F30000000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -70,6 +108,7 @@
 			isa = PBXGroup;
 			children = (
 				A40000000000000000000002 /* MacWindowButtons */,
+				F40000000000000000000001 /* FinderExtension */,
 				A40000000000000000000004 /* Config */,
 				A40000000000000000000003 /* Products */,
 			);
@@ -93,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000005 /* MacWindowButtons.app */,
+				F20000000000000000000003 /* MacWindowButtonsFinder.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -113,6 +153,7 @@
 				A20000000000000000000003 /* ApplicationState.swift */,
 				A20000000000000000000022 /* DeleteToTrashShortcutController.swift */,
 				A20000000000000000000023 /* InputMethodShortcutController.swift */,
+				A20000000000000000000024 /* DesktopShortcutController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -175,6 +216,15 @@
 			path = Design;
 			sourceTree = "<group>";
 		};
+		F40000000000000000000001 /* FinderExtension */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000001 /* FinderSync.swift */,
+				F20000000000000000000002 /* Info.plist */,
+			);
+			path = FinderExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -185,15 +235,34 @@
 				A70000000000000000000001 /* Sources */,
 				A30000000000000000000001 /* Frameworks */,
 				A80000000000000000000001 /* Resources */,
+				F60000000000000000000001 /* Embed Finder Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F90000000000000000000001 /* PBXTargetDependency */,
 			);
 			name = MacWindowButtons;
 			productName = MacWindowButtons;
 			productReference = A20000000000000000000005 /* MacWindowButtons.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F50000000000000000000001 /* MacWindowButtonsFinder */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC0000000000000000000001 /* Build configuration list for PBXNativeTarget "MacWindowButtonsFinder" */;
+			buildPhases = (
+				F70000000000000000000001 /* Sources */,
+				F30000000000000000000001 /* Frameworks */,
+				F80000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MacWindowButtonsFinder;
+			productName = MacWindowButtonsFinder;
+			productReference = F20000000000000000000003 /* MacWindowButtonsFinder.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -206,6 +275,9 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					F50000000000000000000001 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
@@ -225,6 +297,7 @@
 			projectRoot = "";
 			targets = (
 				A50000000000000000000001 /* MacWindowButtons */,
+				F50000000000000000000001 /* MacWindowButtonsFinder */,
 			);
 		};
 /* End PBXProject section */
@@ -235,6 +308,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000016 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F80000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -264,10 +344,27 @@
 				A10000000000000000000018 /* UpdateManager.swift in Sources */,
 				A10000000000000000000019 /* DeleteToTrashShortcutController.swift in Sources */,
 				A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */,
+				A10000000000000000000021 /* DesktopShortcutController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F70000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F10000000000000000000001 /* FinderSync.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F90000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F50000000000000000000001 /* MacWindowButtonsFinder */;
+			targetProxy = FA0000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B10000000000000000000001 /* Debug */ = {
@@ -310,13 +407,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.5.1;
+				MARKETING_VERSION = 26.0824.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -329,15 +426,55 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 25;
+				CURRENT_PROJECT_VERSION = 26;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.5.1;
+				MARKETING_VERSION = 26.0824.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		FB0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 26;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FinderExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 26.0824.01;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		FB0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 26;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FinderExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 26.0824.01;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -360,6 +497,15 @@
 			buildConfigurations = (
 				B10000000000000000000003 /* Debug */,
 				B10000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FC0000000000000000000001 /* Build configuration list for PBXNativeTarget "MacWindowButtonsFinder" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FB0000000000000000000001 /* Debug */,
+				FB0000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

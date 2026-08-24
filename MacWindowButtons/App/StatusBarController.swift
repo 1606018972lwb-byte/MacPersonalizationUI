@@ -122,6 +122,15 @@ final class StatusBarController: NSObject {
         settingsItem.target = self
         settingsItem.isEnabled = true
         menu.addItem(settingsItem)
+
+        let finderExtensionItem = NSMenuItem(
+            title: "打开 Finder 扩展设置",
+            action: #selector(openFinderExtensionSettings),
+            keyEquivalent: ""
+        )
+        finderExtensionItem.target = self
+        finderExtensionItem.isEnabled = true
+        menu.addItem(finderExtensionItem)
         menu.addItem(.separator())
 
         let restartItem = NSMenuItem(
@@ -147,6 +156,15 @@ final class StatusBarController: NSObject {
 
     @objc private func openSettingsInterface() {
         showControlCenter()
+    }
+
+    @objc private func openFinderExtensionSettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.ExtensionsPreferences?extensionPointIdentifier=com.apple.FinderSync"
+        ) else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 
     /// 先启动一个短生命周期的系统助手，当前进程退出并释放单实例锁后再打开应用。

@@ -26,8 +26,11 @@ xcodebuild -quiet \
 app_path="$derived_data/Build/Products/Release/MacWindowButtons.app"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist")"
 requirement='=designated => identifier "com.lwb.MacWindowButtons"'
+finder_extension_path="$app_path/Contents/PlugIns/MacWindowButtonsFinder.appex"
+finder_extension_requirement='=designated => identifier "com.lwb.MacWindowButtons.FinderExtension"'
 
-codesign --force --deep --sign - --requirements "$requirement" "$app_path"
+codesign --force --sign - --requirements "$finder_extension_requirement" "$finder_extension_path"
+codesign --force --sign - --requirements "$requirement" "$app_path"
 codesign --verify --deep --strict --verbose=2 "$app_path"
 
 cp -R "$app_path" "$staging/MacWindowButtons.app"

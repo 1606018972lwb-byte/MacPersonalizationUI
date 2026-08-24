@@ -84,20 +84,10 @@ final class WindowActionService {
             return didRestore
         }
 
-        guard let screen = ScreenCoordinateConverter.screen(containingAccessibilityRect: window.frame) else {
-            NSLog("[MacWindowButtons] 无法确定目标窗口所在显示器")
-            return false
-        }
-
-        var appKitMaximizeFrame = screen.visibleFrame
-        // 最大化窗口顶部主动空出一整行，控制条位于这一行内，不覆盖应用内容。
-        appKitMaximizeFrame.size.height = max(
-            80,
-            appKitMaximizeFrame.height - reservedTopHeight
-        )
-        guard let maximizeFrame = ScreenCoordinateConverter.accessibilityRect(
-                fromAppKitRect: appKitMaximizeFrame
-              ) else {
+        guard let maximizeFrame = maximizedFrame(
+            for: window,
+            reservedTopHeight: reservedTopHeight
+        ) else {
             NSLog("[MacWindowButtons] 无法转换最大化窗口坐标")
             return false
         }
@@ -140,26 +130,76 @@ final class WindowActionService {
         reservedTopHeight: CGFloat
     ) -> Bool {
         guard stateStore.hasRestoreFrame(for: window.identifier),
-              let screen = ScreenCoordinateConverter.screen(
-                containingAccessibilityRect: window.frame
+              let accessibilityFrame = maximizedFrame(
+                for: window,
+                reservedTopHeight: reservedTopHeight
               ) else {
-            return false
-        }
-
-        var appKitFrame = screen.visibleFrame
-        appKitFrame.size.height = max(80, appKitFrame.height - reservedTopHeight)
-        guard let accessibilityFrame = ScreenCoordinateConverter.accessibilityRect(
-            fromAppKitRect: appKitFrame
-        ) else {
             return false
         }
         return apply(frame: accessibilityFrame, to: window.element)
     }
 
+    /// Electron 等应用偶尔会接受第一次 AX 写入，却在下一轮布局中恢复部分尺寸。
+    /// 最大化动作完成后重新读取实际 frame，仅在有偏差时执行一次精确校正。
+    @discardableResult
+    func correctMaximizedFrameIfNeeded(
+        for window: TargetWindow,
+        reservedTopHeight: CGFloat
+    ) -> Bool {
+        guard stateStore.hasRestoreFrame(for: window.identifier),
+              let targetFrame = maximizedFrame(
+                for: window,
+                reservedTopHeight: reservedTopHeight
+              ) else {
+            return false
+        }
+        guard !window.frame.isApproximatelyEqual(to: targetFrame) else {
+            return true
+        }
+        return apply(frame: targetFrame, to: window.element)
+    }
+
+    private func maximizedFrame(
+        for window: TargetWindow,
+        reservedTopHeight: CGFloat
+    ) -> CGRect? {
+        guard let screen = ScreenCoordinateConverter.screen(
+            containingAccessibilityRect: window.frame
+        ) else {
+            return nil
+        }
+
+        // visibleFrame 是当前显示器扣除菜单栏和 Dock 后的真实可用区域。
+        // AppKit 使用左下角坐标，保持 minY 不变并缩短高度，会把预留行放在顶部。
+        var appKitFrame = screen.visibleFrame
+        appKitFrame.size.height = max(
+            80,
+            appKitFrame.height - reservedTopHeight
+        )
+        return ScreenCoordinateConverter.accessibilityRect(fromAppKitRect: appKitFrame)
+    }
+
     private func apply(frame: CGRect, to element: AXUIElement) -> Bool {
-        // 先设置尺寸再设置位置，可减少部分 Chromium 应用对尺寸约束造成的偏移。
+        // 先把窗口左上角放进目标屏幕，再设置完整尺寸。Electron/Chromium 会根据
+        // 设置尺寸时所在的屏幕施加约束，因此最后再写一次位置消除布局舍入偏差。
+        let didSetInitialPosition = element.setPointAttribute(
+            kAXPositionAttribute,
+            value: frame.origin
+        )
         let didSetSize = element.setSizeAttribute(kAXSizeAttribute, value: frame.size)
-        let didSetPosition = element.setPointAttribute(kAXPositionAttribute, value: frame.origin)
-        return didSetSize && didSetPosition
+        let didSetFinalPosition = element.setPointAttribute(
+            kAXPositionAttribute,
+            value: frame.origin
+        )
+        return didSetSize && (didSetInitialPosition || didSetFinalPosition)
+    }
+}
+
+private extension CGRect {
+    func isApproximatelyEqual(to other: CGRect, tolerance: CGFloat = 1) -> Bool {
+        abs(minX - other.minX) <= tolerance
+            && abs(minY - other.minY) <= tolerance
+            && abs(width - other.width) <= tolerance
+            && abs(height - other.height) <= tolerance
     }
 }
