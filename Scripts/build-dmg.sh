@@ -29,7 +29,10 @@ requirement='=designated => identifier "com.lwb.MacWindowButtons"'
 finder_extension_path="$app_path/Contents/PlugIns/MacWindowButtonsFinder.appex"
 finder_extension_requirement='=designated => identifier "com.lwb.MacWindowButtons.FinderExtension"'
 
-codesign --force --sign - --requirements "$finder_extension_requirement" "$finder_extension_path"
+codesign --force --sign - \
+    --requirements "$finder_extension_requirement" \
+    --entitlements FinderExtension/FinderExtension.entitlements \
+    "$finder_extension_path"
 codesign --force --sign - --requirements "$requirement" "$app_path"
 codesign --verify --deep --strict --verbose=2 "$app_path"
 
