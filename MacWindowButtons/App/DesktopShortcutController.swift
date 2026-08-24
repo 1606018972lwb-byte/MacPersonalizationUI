@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 
 /// 接收 Finder 扩展发来的选中项，并在用户桌面创建 Finder 别名。
@@ -47,7 +46,6 @@ final class DesktopShortcutController {
             return
         }
 
-        var createdURLs: [URL] = []
         for path in paths {
             let sourceURL = URL(fileURLWithPath: path).standardizedFileURL
             guard fileManager.fileExists(atPath: sourceURL.path) else {
@@ -65,7 +63,6 @@ final class DesktopShortcutController {
                     on: desktopURL
                 )
                 try URL.writeBookmarkData(bookmarkData, to: destinationURL)
-                createdURLs.append(destinationURL)
             } catch {
                 NSLog(
                     "[MacWindowButtons] 创建桌面快捷方式失败（%@）：%@",
@@ -75,10 +72,6 @@ final class DesktopShortcutController {
             }
         }
 
-        guard !createdURLs.isEmpty else {
-            return
-        }
-        NSWorkspace.shared.activateFileViewerSelecting(createdURLs)
     }
 
     private func availableDestination(for sourceURL: URL, on desktopURL: URL) -> URL {

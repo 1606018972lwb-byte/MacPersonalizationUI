@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-当前版本为 26.0824.03。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
+当前版本为 26.0824.04。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 用户点击授权按钮时通过 `AXIsProcessTrustedWithOptions` 请求辅助功能权限。
@@ -82,7 +82,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0824.03.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0824.04.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 点击顶部菜单栏小图标，在设置窗口的“权限”页面点击“重新授权”。
