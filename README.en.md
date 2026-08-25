@@ -80,4 +80,4 @@ The application starts silently by default and stays out of the Dock. A full-wid
 
 The local test package is `dist/MacWindowButtons-26.0825.01.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
 
-The offline issuer is `licenseGet/generate_license.py`. Run it once with `--init-key`, embed the printed public key in `LicenseVerifier.publicKeyBase64`, and keep the generated `license_private_key.json` offline. The private-key file is ignored by Git and must never be shipped in the application or DMG.
+The offline issuer is `licenseGet/generate_license.py`. It stores the Ed25519 signing key as a password-encrypted PKCS#8 `license_private_key.pem`; migrate the legacy plaintext JSON with `--migrate-key` so the embedded public key and existing licenses remain valid. Keep the encrypted key and password in separate offline backups, and never ship either private-key file in the application or DMG.

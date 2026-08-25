@@ -12,3 +12,6 @@ xcuserdata/
 
 # 离线许可证签发私钥只能保存在管理员机器上，绝不能提交或随应用发布。
 licenseGet/license_private_key.json
+licenseGet/license_private_key.pem
+licenseGet/.license_private_key.pem.*
+licenseGet/.venv/

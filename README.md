@@ -221,4 +221,4 @@ xcodebuild -project MacWindowButtons.xcodeproj \
 - 应用安装目录不可写时无法无感替换，请从发行页面手动安装；正式分发仍建议配置 Developer ID 签名、公证和专用更新框架。
 - 本项目不能保证兼容所有 macOS 应用。
 - 离线许可证可以阻止普通复制和篡改，但无法从理论上阻止攻击者修改应用二进制或同时删除钥匙串和本地状态；更高强度的授权需要联网校验服务。
-- `licenseGet/license_private_key.json` 是唯一签发私钥，必须离线备份且绝不能提交到仓库或随 DMG 发布；丢失私钥后无法继续签发兼容的激活码。
+- `licenseGet/license_private_key.pem` 是口令加密的唯一签发私钥，必须与口令分开离线备份，且绝不能提交到仓库或随 DMG 发布；旧版明文 JSON 应使用 `--migrate-key` 转换，不能重新生成私钥。
