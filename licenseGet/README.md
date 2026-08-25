@@ -7,7 +7,7 @@ python3 -m venv licenseGet/.venv
 licenseGet/.venv/bin/python3 -m pip install -r licenseGet/requirements.txt
 ```
 
-在 Finder 中双击 `run_license_generator.command` 时，如果尚未配置环境，也可以确认后自动完成上述安装。需要离线使用时，应先联网安装依赖，再将管理员机器断网。
+在 Finder 中双击 `run_license_generator.command` 时，如果尚未配置环境，也可以确认后自动完成上述安装。需要离线使用时，应先联网安装依赖，再将管理员机器断网。启动器检测到旧版 JSON 时会自动进入迁移流程。
 
 ## 迁移现有私钥
 

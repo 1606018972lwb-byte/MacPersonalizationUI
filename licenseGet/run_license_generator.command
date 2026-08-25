@@ -25,12 +25,25 @@ if [[ ! -x "$python_path" ]] || \
     fi
 fi
 
-"$python_path" "$script_directory/generate_license.py"
+generator_arguments=()
+if [[ -f "$script_directory/license_private_key.json" ]] && \
+    [[ ! -f "$script_directory/license_private_key.pem" ]]; then
+    echo "检测到旧版明文私钥，将先迁移为口令加密的 PKCS#8 文件。"
+    echo "迁移验证成功后旧版 JSON 会被删除；现有激活码不会失效。"
+    echo
+    generator_arguments=(--migrate-key)
+fi
+
+"$python_path" "$script_directory/generate_license.py" "${generator_arguments[@]}"
 exit_status=$?
 
 echo
 if [[ $exit_status -eq 0 ]]; then
-    echo "激活码生成完成。"
+    if [[ ${#generator_arguments[@]} -gt 0 ]]; then
+        echo "私钥迁移完成。下次运行本启动器即可生成激活码。"
+    else
+        echo "激活码生成完成。"
+    fi
 else
     echo "激活码生成失败，请检查上面的错误信息。"
 fi
