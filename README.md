@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-当前版本为 26.0825.01。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
+当前版本为 26.0825.02。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 启动时读取 `IOPlatformUUID`，经过产品盐和 SHA-256 生成不可逆的加密设备码；界面和发码器都不会暴露原始硬件 UUID。
@@ -86,7 +86,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0825.01.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0825.02.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 首次启动会显示不可逆的加密设备码。把它复制到管理员发码脚本，将返回的激活码粘贴进窗口并点击“激活”。

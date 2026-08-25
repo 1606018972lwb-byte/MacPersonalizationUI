@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-The current version is 26.0825.01. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
+The current version is 26.0825.02. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
 
 - Accessibility permission prompting and a System Settings shortcut.
 - An irreversible salted SHA-256 encrypted device code derived from `IOPlatformUUID`; the raw hardware UUID is never displayed or passed to the issuing tool.
@@ -78,6 +78,6 @@ The current version is 26.0825.01. Versions use `YY.MMDD.NN`: two-digit year, mo
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-26.0825.01.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-26.0825.02.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
 
 The offline issuer is `licenseGet/generate_license.py`. It stores the Ed25519 signing key as a password-encrypted PKCS#8 `license_private_key.pem`; migrate the legacy plaintext JSON with `--migrate-key` so the embedded public key and existing licenses remain valid. Keep the encrypted key and password in separate offline backups, and never ship either private-key file in the application or DMG.
