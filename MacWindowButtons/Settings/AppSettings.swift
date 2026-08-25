@@ -127,6 +127,25 @@ final class AppSettings {
         }
     }
 
+    enum DesktopShortcutNameStyle: String, CaseIterable {
+        case withoutShortcutSuffix
+        case withShortcutSuffix
+
+        var displayName: String {
+            switch self {
+            case .withoutShortcutSuffix: "无快捷方式后缀"
+            case .withShortcutSuffix: "添加快捷方式后缀"
+            }
+        }
+
+        func baseName(for sourceName: String) -> String {
+            switch self {
+            case .withoutShortcutSuffix: sourceName
+            case .withShortcutSuffix: "\(sourceName) - 快捷方式"
+            }
+        }
+    }
+
     private enum Key {
         static let modifierOnlyKeyCode = UInt32.max
         static let controlSize = "windowControlButtonSize"
@@ -145,6 +164,7 @@ final class AppSettings {
         static let chineseEnglishShortcutModifiers = "chineseEnglishShortcutModifiers"
         static let finderContextMenuEnabled = "finderContextMenuEnabled"
         static let desktopShortcutMenuItemEnabled = "desktopShortcutMenuItemEnabled"
+        static let desktopShortcutNameStyle = "desktopShortcutNameStyle"
     }
 
     private let defaults: UserDefaults
@@ -166,6 +186,7 @@ final class AppSettings {
     private(set) var chineseEnglishShortcut: GlobalKeyboardShortcut?
     private(set) var isFinderContextMenuEnabled: Bool
     private(set) var isDesktopShortcutMenuItemEnabled: Bool
+    private(set) var desktopShortcutNameStyle: DesktopShortcutNameStyle
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -237,6 +258,9 @@ final class AppSettings {
         isDesktopShortcutMenuItemEnabled = defaults.object(
             forKey: Key.desktopShortcutMenuItemEnabled
         ) as? Bool ?? true
+        desktopShortcutNameStyle = DesktopShortcutNameStyle(
+            rawValue: defaults.string(forKey: Key.desktopShortcutNameStyle) ?? ""
+        ) ?? .withoutShortcutSuffix
     }
 
     /// 保存按钮大小，并通知菜单和悬浮面板立即刷新。
@@ -376,6 +400,11 @@ final class AppSettings {
     func setDesktopShortcutMenuItemEnabled(_ enabled: Bool) {
         isDesktopShortcutMenuItemEnabled = enabled
         defaults.set(enabled, forKey: Key.desktopShortcutMenuItemEnabled)
+    }
+
+    func setDesktopShortcutNameStyle(_ style: DesktopShortcutNameStyle) {
+        desktopShortcutNameStyle = style
+        defaults.set(style.rawValue, forKey: Key.desktopShortcutNameStyle)
     }
 
 }

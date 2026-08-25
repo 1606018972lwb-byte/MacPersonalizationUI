@@ -29,6 +29,8 @@
 		A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000023 /* InputMethodShortcutController.swift */; };
 		A10000000000000000000021 /* DesktopShortcutController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000024 /* DesktopShortcutController.swift */; };
 		A10000000000000000000022 /* FinderContextMenuController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000025 /* FinderContextMenuController.swift */; };
+		A10000000000000000000023 /* LicenseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000026 /* LicenseManager.swift */; };
+		A10000000000000000000024 /* ActivationWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000027 /* ActivationWindowController.swift */; };
 		F10000000000000000000001 /* FinderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* FinderSync.swift */; };
 		F10000000000000000000002 /* MacWindowButtonsFinder.appex in Embed Finder Extensions */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* MacWindowButtonsFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -83,6 +85,8 @@
 		A20000000000000000000023 /* InputMethodShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMethodShortcutController.swift; sourceTree = "<group>"; };
 		A20000000000000000000024 /* DesktopShortcutController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopShortcutController.swift; sourceTree = "<group>"; };
 		A20000000000000000000025 /* FinderContextMenuController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderContextMenuController.swift; sourceTree = "<group>"; };
+		A20000000000000000000026 /* LicenseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseManager.swift; sourceTree = "<group>"; };
+		A20000000000000000000027 /* ActivationWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationWindowController.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		F20000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F20000000000000000000003 /* MacWindowButtonsFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MacWindowButtonsFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -124,6 +128,7 @@
 				A40000000000000000000006 /* Accessibility */,
 				A40000000000000000000007 /* WindowControl */,
 				A40000000000000000000008 /* Overlay */,
+				A40000000000000000000012 /* Licensing */,
 				A40000000000000000000009 /* Settings */,
 				A40000000000000000000010 /* Resources */,
 				A40000000000000000000011 /* Design */,
@@ -218,6 +223,15 @@
 				A20000000000000000000019 /* AppIcon-master.png */,
 			);
 			path = Design;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000012 /* Licensing */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000026 /* LicenseManager.swift */,
+				A20000000000000000000027 /* ActivationWindowController.swift */,
+			);
+			path = Licensing;
 			sourceTree = "<group>";
 		};
 		F40000000000000000000001 /* FinderExtension */ = {
@@ -351,6 +365,8 @@
 				A10000000000000000000020 /* InputMethodShortcutController.swift in Sources */,
 				A10000000000000000000021 /* DesktopShortcutController.swift in Sources */,
 				A10000000000000000000022 /* FinderContextMenuController.swift in Sources */,
+				A10000000000000000000023 /* LicenseManager.swift in Sources */,
+				A10000000000000000000024 /* ActivationWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -413,13 +429,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.05;
+				MARKETING_VERSION = 26.0825.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -432,13 +448,13 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Config/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.05;
+				MARKETING_VERSION = 26.0825.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -452,13 +468,13 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = FinderExtension/FinderExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FinderExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.05;
+				MARKETING_VERSION = 26.0825.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -473,13 +489,13 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = FinderExtension/FinderExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = FinderExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 26.0824.05;
+				MARKETING_VERSION = 26.0825.01;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lwb.MacWindowButtons.FinderExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

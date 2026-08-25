@@ -253,6 +253,10 @@ final class ControlCenterViewController: NSViewController {
         target: self,
         action: #selector(toggleDesktopShortcutMenuItem(_:))
     )
+    private lazy var desktopShortcutNameStylePopup = NSPopUpButton(
+        frame: .zero,
+        pullsDown: false
+    )
     private let finderContextMenuStatusLabel = NSTextField(wrappingLabelWithString: "")
     private lazy var controlAppearancePopup = NSPopUpButton(
         frame: .zero,
@@ -680,6 +684,13 @@ final class ControlCenterViewController: NSViewController {
     private func makeContextMenuPage() -> NSView {
         finderContextMenuCheckbox.font = .systemFont(ofSize: 13)
         desktopShortcutMenuItemCheckbox.font = .systemFont(ofSize: 13)
+        desktopShortcutNameStylePopup.addItems(
+            withTitles: AppSettings.DesktopShortcutNameStyle.allCases.map(\.displayName)
+        )
+        desktopShortcutNameStylePopup.target = self
+        desktopShortcutNameStylePopup.action = #selector(changeDesktopShortcutNameStyle(_:))
+        desktopShortcutNameStylePopup.translatesAutoresizingMaskIntoConstraints = false
+        desktopShortcutNameStylePopup.widthAnchor.constraint(equalToConstant: 170).isActive = true
         finderContextMenuStatusLabel.font = .systemFont(ofSize: 11)
         finderContextMenuStatusLabel.textColor = .secondaryLabelColor
         finderContextMenuStatusLabel.maximumNumberOfLines = 3
@@ -695,7 +706,8 @@ final class ControlCenterViewController: NSViewController {
 
         let groupRow = NSStackView(views: [
             desktopShortcutMenuItemCheckbox,
-            makeFlexibleSpacer()
+            makeFlexibleSpacer(),
+            desktopShortcutNameStylePopup
         ])
         groupRow.orientation = .horizontal
         groupRow.alignment = .centerY
@@ -1003,8 +1015,16 @@ final class ControlCenterViewController: NSViewController {
         desktopShortcutMenuItemCheckbox.state = appSettings.isDesktopShortcutMenuItemEnabled
             ? .on
             : .off
+        if let styleIndex = AppSettings.DesktopShortcutNameStyle.allCases.firstIndex(
+            of: appSettings.desktopShortcutNameStyle
+        ) {
+            desktopShortcutNameStylePopup.selectItem(at: styleIndex)
+        }
         finderContextMenuCheckbox.isEnabled = !finderContextMenuController.isApplying
         desktopShortcutMenuItemCheckbox.isEnabled = appSettings.isFinderContextMenuEnabled
+            && !finderContextMenuController.isApplying
+        desktopShortcutNameStylePopup.isEnabled = appSettings.isFinderContextMenuEnabled
+            && appSettings.isDesktopShortcutMenuItemEnabled
             && !finderContextMenuController.isApplying
         finderContextMenuStatusLabel.stringValue = finderContextMenuController.statusText
         if finderContextMenuController.hasError {
@@ -1171,6 +1191,16 @@ final class ControlCenterViewController: NSViewController {
     @objc private func toggleDesktopShortcutMenuItem(_ sender: NSButton) {
         finderContextMenuController.setDesktopShortcutEnabled(sender.state == .on)
         refreshFinderContextMenuInterface()
+    }
+
+    @objc private func changeDesktopShortcutNameStyle(_ sender: NSPopUpButton) {
+        let styles = AppSettings.DesktopShortcutNameStyle.allCases
+        guard styles.indices.contains(sender.indexOfSelectedItem) else {
+            return
+        }
+        appSettings.setDesktopShortcutNameStyle(
+            styles[sender.indexOfSelectedItem]
+        )
     }
 
     @objc private func openKeyboardShortcutSettings() {

@@ -71,6 +71,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let permissionManager = AccessibilityPermissionManager()
     private let appSettings = AppSettings()
     private let launchAtLoginController = LaunchAtLoginController()
+    private let licenseManager = LicenseManager()
+    private lazy var activationWindowController = ActivationWindowController(
+        licenseManager: licenseManager
+    )
     private lazy var updateManager = UpdateManager(appSettings: appSettings)
     private lazy var deleteShortcutController = DeleteToTrashShortcutController(
         appSettings: appSettings
@@ -81,9 +85,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var finderContextMenuController = FinderContextMenuController(
         appSettings: appSettings
     )
-    private let desktopShortcutController = DesktopShortcutController()
+    private lazy var desktopShortcutController = DesktopShortcutController(
+        appSettings: appSettings
+    )
     private var statusBarController: StatusBarController?
     private var overlayPanelController: OverlayPanelController?
+    private var licensedFeaturesRunning = false
 
     private init(singleInstanceCoordinator: SingleInstanceCoordinator) {
         self.singleInstanceCoordinator = singleInstanceCoordinator
@@ -109,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         application.run()
     }
 
-    /// 应用完成启动后创建菜单栏控制器。
+    /// 应用完成启动后先验证许可证，只有授权有效时才启动实际功能。
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 使用菜单栏附件策略：窗口可以正常显示，但应用图标不会进入程序坞。
         NSApp.setActivationPolicy(.accessory)
@@ -119,42 +126,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: SingleInstanceCoordinator.showMainWindowNotification,
             object: nil
         )
-
-        let windowManager = AccessibilityWindowManager(permissionManager: permissionManager)
-        let stateStore = WindowStateStore()
-        let actionService = WindowActionService(stateStore: stateStore)
-        let overlayController = OverlayPanelController(
-            applicationState: applicationState,
-            permissionManager: permissionManager,
-            windowManager: windowManager,
-            actionService: actionService,
-            appSettings: appSettings
-        )
-
-        let statusController = StatusBarController(
-            applicationState: applicationState,
-            permissionManager: permissionManager,
-            appSettings: appSettings,
-            launchAtLoginController: launchAtLoginController,
-            updateManager: updateManager,
-            inputMethodShortcutController: inputMethodShortcutController,
-            finderContextMenuController: finderContextMenuController,
-            windowRefresher: overlayController
-        )
-        statusBarController = statusController
-        overlayPanelController = overlayController
-        overlayController.start()
-        deleteShortcutController.start()
-        inputMethodShortcutController.start()
-        finderContextMenuController.start()
-        updateManager.start()
-
-        // 默认静默进入菜单栏；关闭“静默启动”后保留原有的首次启动弹窗行为。
-        if !appSettings.launchesSilently {
-            DispatchQueue.main.async {
-                statusController.showControlCenter()
-            }
+        licenseManager.onStateChange = { [weak self] state in
+            self?.applyLicenseState(state, isInitialLaunch: false)
         }
+        licenseManager.startMonitoring()
+        applyLicenseState(licenseManager.state, isInitialLaunch: true)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -162,10 +138,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlayPanelController?.stop()
         deleteShortcutController.stop()
         inputMethodShortcutController.stop()
+        finderContextMenuController.stop()
+        updateManager.stop()
+        licenseManager.stopMonitoring()
     }
 
     /// 接收 Sandbox Finder 扩展通过自定义 URL scheme 发来的快捷方式请求。
     func application(_ application: NSApplication, open urls: [URL]) {
+        licenseManager.refresh()
+        guard licenseManager.state.isActive else {
+            activationWindowController.show()
+            return
+        }
         for url in urls {
             _ = desktopShortcutController.handle(url)
         }
@@ -174,14 +158,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 强制启动第二个进程时，由单实例协调器把启动意图转发到这里。
     @objc private func showMainWindowFromSecondLaunch(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        statusBarController?.showControlCenter()
+        licenseManager.refresh()
+        if licenseManager.state.isActive {
+            statusBarController?.showControlCenter()
+        } else {
+            activationWindowController.show()
+        }
     }
 
     /// 应用重新成为活动状态时，如果主界面已关闭，则自动重新显示。
     func applicationDidBecomeActive(_ notification: Notification) {
         DispatchQueue.main.async { [weak self] in
-            guard let self,
-                  !appSettings.launchesSilently,
+            guard let self else {
+                return
+            }
+            if !licenseManager.state.isActive {
+                if !activationWindowController.isVisible {
+                    activationWindowController.show()
+                }
+                return
+            }
+            guard !appSettings.launchesSilently,
                   let statusBarController,
                   !statusBarController.isControlCenterVisible else {
                 return
@@ -196,7 +193,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hasVisibleWindows flag: Bool
     ) -> Bool {
         sender.setActivationPolicy(.accessory)
-        statusBarController?.showControlCenter()
+        licenseManager.refresh()
+        if licenseManager.state.isActive {
+            statusBarController?.showControlCenter()
+        } else {
+            activationWindowController.show()
+        }
         // 主界面已由上面的调用恢复，不再请求 AppKit 执行默认的窗口恢复流程。
         return false
     }
@@ -204,5 +206,84 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 最后一个普通窗口关闭时仍保持菜单栏应用运行。
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    private func applyLicenseState(
+        _ state: LicenseState,
+        isInitialLaunch: Bool
+    ) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard state.isActive else {
+            stopLicensedFeatures()
+            activationWindowController.refreshState()
+            activationWindowController.show()
+            return
+        }
+
+        let wasShowingActivation = activationWindowController.isVisible
+        startLicensedFeatures()
+        activationWindowController.closeAfterActivation()
+        if wasShowingActivation || (isInitialLaunch && !appSettings.launchesSilently) {
+            DispatchQueue.main.async { [weak self] in
+                self?.statusBarController?.showControlCenter()
+            }
+        }
+    }
+
+    private func startLicensedFeatures() {
+        guard !licensedFeaturesRunning else {
+            return
+        }
+        let overlayController: OverlayPanelController
+        if let existingController = overlayPanelController {
+            overlayController = existingController
+        } else {
+            let windowManager = AccessibilityWindowManager(
+                permissionManager: permissionManager
+            )
+            let stateStore = WindowStateStore()
+            let actionService = WindowActionService(stateStore: stateStore)
+            overlayController = OverlayPanelController(
+                applicationState: applicationState,
+                permissionManager: permissionManager,
+                windowManager: windowManager,
+                actionService: actionService,
+                appSettings: appSettings
+            )
+            overlayPanelController = overlayController
+        }
+
+        if statusBarController == nil {
+            statusBarController = StatusBarController(
+                applicationState: applicationState,
+                permissionManager: permissionManager,
+                appSettings: appSettings,
+                launchAtLoginController: launchAtLoginController,
+                updateManager: updateManager,
+                inputMethodShortcutController: inputMethodShortcutController,
+                finderContextMenuController: finderContextMenuController,
+                windowRefresher: overlayController
+            )
+        }
+        overlayController.start()
+        deleteShortcutController.start()
+        inputMethodShortcutController.start()
+        finderContextMenuController.start()
+        updateManager.start()
+        licensedFeaturesRunning = true
+    }
+
+    private func stopLicensedFeatures() {
+        guard licensedFeaturesRunning else {
+            finderContextMenuController.stop()
+            return
+        }
+        overlayPanelController?.stop()
+        deleteShortcutController.stop()
+        inputMethodShortcutController.stop()
+        finderContextMenuController.stop()
+        updateManager.stop()
+        statusBarController = nil
+        licensedFeaturesRunning = false
     }
 }

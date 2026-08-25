@@ -1,5 +1,26 @@
 import Foundation
 
+enum DesktopShortcutNaming {
+    static func availableDestination(
+        sourceName: String,
+        desktopURL: URL,
+        style: AppSettings.DesktopShortcutNameStyle,
+        fileExists: (String) -> Bool
+    ) -> URL {
+        let baseName = style.baseName(for: sourceName)
+        var destinationURL = desktopURL.appendingPathComponent(baseName)
+        var copyNumber = 1
+
+        while fileExists(destinationURL.path) {
+            destinationURL = desktopURL.appendingPathComponent(
+                "\(baseName) (\(copyNumber))"
+            )
+            copyNumber += 1
+        }
+        return destinationURL
+    }
+}
+
 /// 接收 Finder 扩展发来的选中项，并在用户桌面创建 Finder 别名。
 final class DesktopShortcutController {
     private static let requestScheme = "macwindowbuttons"
@@ -9,9 +30,14 @@ final class DesktopShortcutController {
         static let paths = "paths"
     }
 
+    private let appSettings: AppSettings
     private let fileManager: FileManager
 
-    init(fileManager: FileManager = .default) {
+    init(
+        appSettings: AppSettings,
+        fileManager: FileManager = .default
+    ) {
+        self.appSettings = appSettings
         self.fileManager = fileManager
     }
 
@@ -79,16 +105,12 @@ final class DesktopShortcutController {
             forAttribute: NSMetadataItemDisplayNameKey
         ) as? String ?? sourceURL.lastPathComponent
         let sourceName = (displayName as NSString).deletingPathExtension
-        let baseName = "\(sourceName) - 快捷方式"
-        var destinationURL = desktopURL.appendingPathComponent(baseName)
-        var copyNumber = 2
-
-        while fileManager.fileExists(atPath: destinationURL.path) {
-            destinationURL = desktopURL.appendingPathComponent(
-                "\(baseName) (\(copyNumber))"
-            )
-            copyNumber += 1
+        return DesktopShortcutNaming.availableDestination(
+            sourceName: sourceName,
+            desktopURL: desktopURL,
+            style: appSettings.desktopShortcutNameStyle
+        ) { path in
+            fileManager.fileExists(atPath: path)
         }
-        return destinationURL
     }
 }

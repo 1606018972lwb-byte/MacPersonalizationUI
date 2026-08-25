@@ -3,8 +3,12 @@ DerivedData/
 .build/
 build/
 dist/
+__pycache__/
 *.xcuserstate
 xcuserdata/
 
 # macOS 文件系统元数据。
 .DS_Store
+
+# 离线许可证签发私钥只能保存在管理员机器上，绝不能提交或随应用发布。
+licenseGet/license_private_key.json

@@ -63,7 +63,7 @@ final class UpdateManager {
     }
 
     deinit {
-        fallbackTimer?.invalidate()
+        stop()
     }
 
     func start() {
@@ -77,6 +77,11 @@ final class UpdateManager {
         RunLoop.main.add(timer, forMode: .common)
         fallbackTimer = timer
         checkIfDue()
+    }
+
+    func stop() {
+        fallbackTimer?.invalidate()
+        fallbackTimer = nil
     }
 
     func checkIfDue() {

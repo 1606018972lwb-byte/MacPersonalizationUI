@@ -25,6 +25,8 @@ final class FinderContextMenuController {
         label: "com.lwb.MacWindowButtons.finder-context-menu",
         qos: .userInitiated
     )
+    private var isOperational = false
+    private var needsReapply = false
 
     private(set) var registrationState: RegistrationState = .checking
     private(set) var isApplying = false
@@ -59,6 +61,12 @@ final class FinderContextMenuController {
     }
 
     func start() {
+        isOperational = true
+        applyCurrentConfiguration()
+    }
+
+    func stop() {
+        isOperational = false
         applyCurrentConfiguration()
     }
 
@@ -74,10 +82,12 @@ final class FinderContextMenuController {
 
     func applyCurrentConfiguration() {
         guard !isApplying else {
+            needsReapply = true
             return
         }
 
-        let shouldEnable = appSettings.isFinderContextMenuEnabled
+        let shouldEnable = isOperational
+            && appSettings.isFinderContextMenuEnabled
             && appSettings.isDesktopShortcutMenuItemEnabled
         isApplying = true
         registrationState = .changing(enabled: shouldEnable)
@@ -107,6 +117,10 @@ final class FinderContextMenuController {
                     self.registrationState = .failed(error.localizedDescription)
                 }
                 self.onStateChange?()
+                if self.needsReapply {
+                    self.needsReapply = false
+                    self.applyCurrentConfiguration()
+                }
             }
         }
     }
