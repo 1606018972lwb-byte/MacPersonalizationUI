@@ -214,7 +214,12 @@ private enum LicenseValidationError: LocalizedError {
 }
 
 private final class LicenseStorage {
+    private enum Key {
+        static let activationCodeBackup = "license.activation-code-backup.v1"
+    }
+
     private let fileManager: FileManager
+    private let defaults: UserDefaults
     private let directoryURL: URL
     private var licenseURL: URL {
         directoryURL.appendingPathComponent("license.dat", isDirectory: false)
@@ -223,8 +228,12 @@ private final class LicenseStorage {
         directoryURL.appendingPathComponent(".clock-state", isDirectory: false)
     }
 
-    init(fileManager: FileManager = .default) {
+    init(
+        fileManager: FileManager = .default,
+        defaults: UserDefaults = .standard
+    ) {
         self.fileManager = fileManager
+        self.defaults = defaults
         let baseURL = try? fileManager.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -239,13 +248,23 @@ private final class LicenseStorage {
     }
 
     func loadActivationCode() -> String? {
-        guard let data = try? Data(contentsOf: licenseURL),
-              let value = String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines),
-              !value.isEmpty else {
+        if let data = try? Data(contentsOf: licenseURL),
+           let value = normalizedActivationCode(
+                String(data: data, encoding: .utf8)
+           ) {
+            // 老版本只有 Application Support 文件；首次读取后自动补齐偏好设置备份。
+            defaults.set(value, forKey: Key.activationCodeBackup)
+            return value
+        }
+
+        guard let backup = normalizedActivationCode(
+            defaults.string(forKey: Key.activationCodeBackup)
+        ) else {
             return nil
         }
-        return value
+        // 文件被清理或迁移遗漏时，从外部偏好设置恢复主副本。恢复失败不影响本次验证。
+        try? saveActivationCode(backup)
+        return backup
     }
 
     func saveActivationCode(_ activationCode: String) throws {
@@ -258,6 +277,7 @@ private final class LicenseStorage {
             [.posixPermissions: 0o600],
             ofItemAtPath: licenseURL.path
         )
+        defaults.set(activationCode, forKey: Key.activationCodeBackup)
     }
 
     func ensureDirectoryExists() throws {
@@ -266,6 +286,16 @@ private final class LicenseStorage {
             withIntermediateDirectories: true,
             attributes: [.posixPermissions: 0o700]
         )
+    }
+
+    private func normalizedActivationCode(_ value: String?) -> String? {
+        guard let value else {
+            return nil
+        }
+        let normalized = value.components(
+            separatedBy: .whitespacesAndNewlines
+        ).joined()
+        return normalized.isEmpty ? nil : normalized
     }
 }
 
