@@ -2,7 +2,6 @@ import AppKit
 import CryptoKit
 import Foundation
 import IOKit
-import Security
 
 struct LicenseDetails: Equatable {
     let licenseIdentifier: String
@@ -216,6 +215,7 @@ private enum LicenseValidationError: LocalizedError {
 private final class LicenseStorage {
     private enum Key {
         static let activationCodeBackup = "license.activation-code-backup.v1"
+        static let maximumObservedTimeBackup = "license.maximum-observed-time.v1"
     }
 
     private let fileManager: FileManager
@@ -288,6 +288,19 @@ private final class LicenseStorage {
         )
     }
 
+    func loadMaximumObservedTimeBackup() -> TimeInterval? {
+        guard let value = defaults.object(
+            forKey: Key.maximumObservedTimeBackup
+        ) as? NSNumber else {
+            return nil
+        }
+        return value.doubleValue
+    }
+
+    func saveMaximumObservedTimeBackup(_ timestamp: TimeInterval) {
+        defaults.set(timestamp, forKey: Key.maximumObservedTimeBackup)
+    }
+
     private func normalizedActivationCode(_ value: String?) -> String? {
         guard let value else {
             return nil
@@ -308,17 +321,15 @@ private enum LicenseStorageError: LocalizedError {
 }
 
 private final class ClockRollbackGuard {
-    private static let service = "com.lwb.MacWindowButtons.license-clock"
-    private static let account = "maximum-observed-time"
     private static let tolerance: TimeInterval = 5 * 60
     private static let stateFileWriteInterval: TimeInterval = 60
-    private static let keychainWriteInterval: TimeInterval = 15 * 60
+    private static let preferencesWriteInterval: TimeInterval = 60
 
     private let storage: LicenseStorage
     private let fileManager: FileManager
     private let baselineWallDate: Date
     private let baselineUptime: TimeInterval
-    private var keychainTimestamp: TimeInterval?
+    private var preferencesTimestamp: TimeInterval?
     private var stateFileTimestamp: TimeInterval?
 
     init(
@@ -331,9 +342,8 @@ private final class ClockRollbackGuard {
         self.fileManager = fileManager
         baselineWallDate = now
         baselineUptime = uptime
-        keychainTimestamp = nil
+        preferencesTimestamp = storage.loadMaximumObservedTimeBackup()
         stateFileTimestamp = nil
-        keychainTimestamp = readKeychain()
         stateFileTimestamp = readStateFile()
     }
 
@@ -357,11 +367,12 @@ private final class ClockRollbackGuard {
         return references.max()
     }
 
-    func record(_ date: Date, forceKeychain: Bool = false) {
+    func record(_ date: Date, forcePersist: Bool = false) {
         let timestamp = floor(date.timeIntervalSince1970)
         let data = Data(String(format: "%.0f", timestamp).utf8)
 
-        if timestamp >= (stateFileTimestamp ?? 0) + Self.stateFileWriteInterval {
+        if forcePersist
+            || timestamp >= (stateFileTimestamp ?? 0) + Self.stateFileWriteInterval {
             do {
                 try storage.ensureDirectoryExists()
                 try data.write(to: storage.clockStateURL, options: .atomic)
@@ -378,17 +389,16 @@ private final class ClockRollbackGuard {
             }
         }
 
-        let shouldWriteKeychain = forceKeychain
-            || timestamp >= (keychainTimestamp ?? 0) + Self.keychainWriteInterval
-        if timestamp > (keychainTimestamp ?? 0), shouldWriteKeychain {
-            if writeKeychain(data) {
-                keychainTimestamp = timestamp
-            }
+        let shouldWritePreferences = forcePersist
+            || timestamp >= (preferencesTimestamp ?? 0) + Self.preferencesWriteInterval
+        if timestamp > (preferencesTimestamp ?? 0), shouldWritePreferences {
+            storage.saveMaximumObservedTimeBackup(timestamp)
+            preferencesTimestamp = timestamp
         }
     }
 
     private func maximumPersistedTimestamp() -> TimeInterval? {
-        [keychainTimestamp, stateFileTimestamp].compactMap { $0 }.max()
+        [preferencesTimestamp, stateFileTimestamp].compactMap { $0 }.max()
     }
 
     private func readStateFile() -> TimeInterval? {
@@ -401,49 +411,6 @@ private final class ClockRollbackGuard {
         )
     }
 
-    private func readKeychain() -> TimeInterval? {
-        var query = keychainQuery()
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data,
-              let string = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-        return TimeInterval(
-            string.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-    }
-
-    private func writeKeychain(_ data: Data) -> Bool {
-        let query = keychainQuery()
-        let updateStatus = SecItemUpdate(
-            query as CFDictionary,
-            [kSecValueData as String: data] as CFDictionary
-        )
-        guard updateStatus == errSecItemNotFound else {
-            if updateStatus != errSecSuccess {
-                NSLog("[MacWindowButtons] 无法更新时间防回拨钥匙串项：%d", updateStatus)
-            }
-            return updateStatus == errSecSuccess
-        }
-        var newItem = query
-        newItem[kSecValueData as String] = data
-        let addStatus = SecItemAdd(newItem as CFDictionary, nil)
-        if addStatus != errSecSuccess {
-            NSLog("[MacWindowButtons] 无法创建时间防回拨钥匙串项：%d", addStatus)
-        }
-        return addStatus == errSecSuccess
-    }
-
-    private func keychainQuery() -> [String: Any] {
-        [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: Self.service,
-            kSecAttrAccount as String: Self.account
-        ]
-    }
 }
 
 final class LicenseManager {
@@ -513,7 +480,7 @@ final class LicenseManager {
 
     func stopMonitoring() {
         if state.isActive {
-            clockGuard.record(Date(), forceKeychain: true)
+            clockGuard.record(Date(), forcePersist: true)
         }
         validationTimer?.invalidate()
         validationTimer = nil
