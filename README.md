@@ -4,7 +4,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 当前已完成功能
 
-当前版本为 26.0825.02。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
+当前版本为 26.0830.01。版本号采用 `YY.MMDD.NN` 格式，依次表示两位年份、月日和当天第几次修改：
 
 - 作为 `UIElement` 菜单栏附件应用运行，只显示 `NSStatusItem` 顶部菜单栏入口，不显示程序坞图标。
 - 启动时读取 `IOPlatformUUID`，经过产品盐和 SHA-256 生成不可逆的加密设备码；界面和发码器都不会暴露原始硬件 UUID。
@@ -20,6 +20,8 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 - 点击菜单栏图标、右键选择打开设置，或在应用已经运行时再次启动，仍会主动显示设置窗口。
 - “快捷键”页提供“按 Delete 删除文件或推出磁盘”开关，默认关闭，可通过复选框明确启用。
 - Finder 右键菜单新增 Windows 风格的“发送到 → 桌面快捷方式”，支持同时为多个文件或文件夹在桌面创建 Finder 别名。
+- Finder 右键菜单新增“复制路径”，文件、文件夹和多选项均可使用；多个路径会逐行复制到系统剪贴板。
+- “鼠标右键”页可分别控制“复制路径”和“桌面快捷方式”是否显示，两项默认开启。
 - “鼠标右键”页可选择桌面替身名称是否添加“ - 快捷方式”后缀，默认不添加；遇到同名文件时从 `(1)` 开始自动递增。
 - Delete 快捷键只在 Finder 位于最前方时生效：可推出卷使用原生 `Command-E`，普通文件和文件夹使用原生 `Command-Delete` 并支持系统撤销。
 - 长按 Delete 只执行一次，避免按键重复连续移动 Finder 后续选中的文件；其他应用中的 Delete 不受影响。
@@ -86,7 +88,7 @@ MacWindowButtons 是一个使用 Swift、AppKit 和 Accessibility API 开发的 
 
 ## 安装与授权
 
-1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0825.02.dmg`。
+1. 下载或构建安装包后，打开 `dist/MacWindowButtons-26.0830.01.dmg`。
 2. 将 `MacWindowButtons.app` 拖入 `Applications`。
 3. 首次打开未公证测试包时，请右键应用并选择“打开”。
 4. 首次启动会显示不可逆的加密设备码。把它复制到管理员发码脚本，将返回的激活码粘贴进窗口并点击“激活”。

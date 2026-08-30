@@ -253,6 +253,11 @@ final class ControlCenterViewController: NSViewController {
         target: self,
         action: #selector(toggleDesktopShortcutMenuItem(_:))
     )
+    private lazy var copyPathMenuItemCheckbox = NSButton(
+        checkboxWithTitle: "复制路径",
+        target: self,
+        action: #selector(toggleCopyPathMenuItem(_:))
+    )
     private lazy var desktopShortcutNameStylePopup = NSPopUpButton(
         frame: .zero,
         pullsDown: false
@@ -683,6 +688,7 @@ final class ControlCenterViewController: NSViewController {
 
     private func makeContextMenuPage() -> NSView {
         finderContextMenuCheckbox.font = .systemFont(ofSize: 13)
+        copyPathMenuItemCheckbox.font = .systemFont(ofSize: 13)
         desktopShortcutMenuItemCheckbox.font = .systemFont(ofSize: 13)
         desktopShortcutNameStylePopup.addItems(
             withTitles: AppSettings.DesktopShortcutNameStyle.allCases.map(\.displayName)
@@ -704,24 +710,34 @@ final class ControlCenterViewController: NSViewController {
         groupBox.fillColor = NSColor.controlBackgroundColor.withAlphaComponent(0.26)
         groupBox.translatesAutoresizingMaskIntoConstraints = false
 
-        let groupRow = NSStackView(views: [
+        let desktopShortcutRow = NSStackView(views: [
             desktopShortcutMenuItemCheckbox,
             makeFlexibleSpacer(),
             desktopShortcutNameStylePopup
         ])
-        groupRow.orientation = .horizontal
-        groupRow.alignment = .centerY
-        groupRow.translatesAutoresizingMaskIntoConstraints = false
+        desktopShortcutRow.orientation = .horizontal
+        desktopShortcutRow.alignment = .centerY
+
+        let groupRows = NSStackView(views: [
+            copyPathMenuItemCheckbox,
+            makeSeparator(),
+            desktopShortcutRow
+        ])
+        groupRows.orientation = .vertical
+        groupRows.alignment = .leading
+        groupRows.spacing = 10
+        groupRows.translatesAutoresizingMaskIntoConstraints = false
+        desktopShortcutRow.widthAnchor.constraint(equalTo: groupRows.widthAnchor).isActive = true
 
         let groupContent = NSView()
-        groupContent.addSubview(groupRow)
+        groupContent.addSubview(groupRows)
         groupBox.contentView = groupContent
         NSLayoutConstraint.activate([
-            groupRow.leadingAnchor.constraint(equalTo: groupContent.leadingAnchor, constant: 14),
-            groupRow.trailingAnchor.constraint(equalTo: groupContent.trailingAnchor, constant: -14),
-            groupRow.topAnchor.constraint(equalTo: groupContent.topAnchor, constant: 12),
-            groupRow.bottomAnchor.constraint(equalTo: groupContent.bottomAnchor, constant: -12),
-            groupBox.heightAnchor.constraint(equalToConstant: 48)
+            groupRows.leadingAnchor.constraint(equalTo: groupContent.leadingAnchor, constant: 14),
+            groupRows.trailingAnchor.constraint(equalTo: groupContent.trailingAnchor, constant: -14),
+            groupRows.topAnchor.constraint(equalTo: groupContent.topAnchor, constant: 12),
+            groupRows.bottomAnchor.constraint(equalTo: groupContent.bottomAnchor, constant: -12),
+            groupBox.heightAnchor.constraint(equalToConstant: 86)
         ])
 
         let stack = NSStackView(views: [
@@ -729,9 +745,9 @@ final class ControlCenterViewController: NSViewController {
             makeDetailLabel("控制 MacWindowButtons 是否向 Finder 注册鼠标右键菜单。"),
             finderContextMenuStatusLabel,
             makeSeparator(),
-            makeSectionTitle("发送到"),
+            makeSectionTitle("显示的功能"),
             groupBox,
-            makeDetailLabel("在 Finder 中选中文件或文件夹后，可创建不复制原文件的桌面替身。")
+            makeDetailLabel("“复制路径”支持文件、文件夹和多选；“桌面快捷方式”会创建不复制原文件的桌面替身。")
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -1015,6 +1031,9 @@ final class ControlCenterViewController: NSViewController {
         desktopShortcutMenuItemCheckbox.state = appSettings.isDesktopShortcutMenuItemEnabled
             ? .on
             : .off
+        copyPathMenuItemCheckbox.state = appSettings.isCopyPathMenuItemEnabled
+            ? .on
+            : .off
         if let styleIndex = AppSettings.DesktopShortcutNameStyle.allCases.firstIndex(
             of: appSettings.desktopShortcutNameStyle
         ) {
@@ -1022,6 +1041,8 @@ final class ControlCenterViewController: NSViewController {
         }
         finderContextMenuCheckbox.isEnabled = !finderContextMenuController.isApplying
         desktopShortcutMenuItemCheckbox.isEnabled = appSettings.isFinderContextMenuEnabled
+            && !finderContextMenuController.isApplying
+        copyPathMenuItemCheckbox.isEnabled = appSettings.isFinderContextMenuEnabled
             && !finderContextMenuController.isApplying
         desktopShortcutNameStylePopup.isEnabled = appSettings.isFinderContextMenuEnabled
             && appSettings.isDesktopShortcutMenuItemEnabled
@@ -1190,6 +1211,11 @@ final class ControlCenterViewController: NSViewController {
 
     @objc private func toggleDesktopShortcutMenuItem(_ sender: NSButton) {
         finderContextMenuController.setDesktopShortcutEnabled(sender.state == .on)
+        refreshFinderContextMenuInterface()
+    }
+
+    @objc private func toggleCopyPathMenuItem(_ sender: NSButton) {
+        finderContextMenuController.setCopyPathEnabled(sender.state == .on)
         refreshFinderContextMenuInterface()
     }
 

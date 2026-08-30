@@ -2,6 +2,15 @@ import Foundation
 
 /// 管理 Finder Sync 扩展的注册状态，使设置页开关真实控制右键菜单。
 final class FinderContextMenuController {
+    private enum ConfigurationNotification {
+        static let changed = Notification.Name(
+            "com.lwb.MacWindowButtons.finder-menu-configuration-changed"
+        )
+        static let requested = Notification.Name(
+            "com.lwb.MacWindowButtons.finder-menu-configuration-requested"
+        )
+    }
+
     enum RegistrationState {
         case checking
         case changing(enabled: Bool)
@@ -27,6 +36,7 @@ final class FinderContextMenuController {
     )
     private var isOperational = false
     private var needsReapply = false
+    private var configurationRequestObserver: NSObjectProtocol?
 
     private(set) var registrationState: RegistrationState = .checking
     private(set) var isApplying = false
@@ -34,6 +44,21 @@ final class FinderContextMenuController {
 
     init(appSettings: AppSettings) {
         self.appSettings = appSettings
+        configurationRequestObserver = DistributedNotificationCenter.default().addObserver(
+            forName: ConfigurationNotification.requested,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.publishMenuConfiguration()
+        }
+    }
+
+    deinit {
+        if let configurationRequestObserver {
+            DistributedNotificationCenter.default().removeObserver(
+                configurationRequestObserver
+            )
+        }
     }
 
     var statusText: String {
@@ -43,9 +68,9 @@ final class FinderContextMenuController {
         case let .changing(enabled):
             enabled ? "正在注册 Finder 右键菜单…" : "正在关闭 Finder 右键菜单…"
         case .enabled:
-            "已启用：Finder 右键菜单会显示“发送到 → 桌面快捷方式”。"
+            "已启用：Finder 右键菜单会显示已勾选的命令。"
         case .disabled where appSettings.isFinderContextMenuEnabled:
-            "“发送到”组当前没有启用的命令，Finder 右键菜单已关闭。"
+            "当前没有勾选任何右键命令，Finder 右键菜单已关闭。"
         case .disabled:
             "已关闭：Finder 右键菜单不会显示 MacWindowButtons 命令。"
         case let .failed(message):
@@ -80,6 +105,11 @@ final class FinderContextMenuController {
         applyCurrentConfiguration()
     }
 
+    func setCopyPathEnabled(_ enabled: Bool) {
+        appSettings.setCopyPathMenuItemEnabled(enabled)
+        applyCurrentConfiguration()
+    }
+
     func applyCurrentConfiguration() {
         guard !isApplying else {
             needsReapply = true
@@ -88,7 +118,11 @@ final class FinderContextMenuController {
 
         let shouldEnable = isOperational
             && appSettings.isFinderContextMenuEnabled
-            && appSettings.isDesktopShortcutMenuItemEnabled
+            && (
+                appSettings.isCopyPathMenuItemEnabled
+                    || appSettings.isDesktopShortcutMenuItemEnabled
+            )
+        publishMenuConfiguration()
         isApplying = true
         registrationState = .changing(enabled: shouldEnable)
         onStateChange?()
@@ -123,6 +157,18 @@ final class FinderContextMenuController {
                 }
             }
         }
+    }
+
+    private func publishMenuConfiguration() {
+        let configuration = [
+            appSettings.isCopyPathMenuItemEnabled ? "1" : "0",
+            appSettings.isDesktopShortcutMenuItemEnabled ? "1" : "0"
+        ].joined(separator: ",")
+        DistributedNotificationCenter.default().post(
+            name: ConfigurationNotification.changed,
+            object: configuration,
+            userInfo: nil
+        )
     }
 
     private func setExtensionEnabled(_ enabled: Bool) throws {

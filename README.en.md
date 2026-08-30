@@ -2,7 +2,7 @@
 
 MacWindowButtons is a Swift and AppKit menu bar utility that keeps an independent Windows-style control row above the focused macOS window. It does not move or modify the native red, yellow, and green controls.
 
-The current version is 26.0825.02. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
+The current version is 26.0830.01. Versions use `YY.MMDD.NN`: two-digit year, month and day, and the modification sequence for that day.
 
 - Accessibility permission prompting and a System Settings shortcut.
 - An irreversible salted SHA-256 encrypted device code derived from `IOPlatformUUID`; the raw hardware UUID is never displayed or passed to the issuing tool.
@@ -17,6 +17,8 @@ The current version is 26.0825.02. Versions use `YY.MMDD.NN`: two-digit year, mo
 - Clicking the menu bar item, choosing Open Settings, or launching the app again while it is already running still opens Settings explicitly.
 - The Shortcuts tab includes an opt-in “Press Delete to delete files or eject disks” checkbox, which is disabled by default.
 - Finder now provides a Windows-style “Send To → Desktop Shortcut” context submenu that creates Finder aliases for selected files and folders.
+- Finder now provides a “Copy Path” command for files, folders, and multiple selections; multiple paths are copied to the system pasteboard one per line.
+- The Context Menu settings page can independently show or hide “Copy Path” and “Desktop Shortcut”; both are enabled by default.
 - Desktop alias names omit the “ - Shortcut” suffix by default, with an optional suffix selector; collisions are numbered from `(1)` upward.
 - The shortcut only intercepts Delete while Finder is frontmost: ejectable volumes use native Command-E, while regular files and folders use native Command-Delete with Undo support.
 - Holding Delete triggers the action only once, preventing key repeat from moving subsequently selected files; Delete remains unchanged in every other application.
@@ -78,6 +80,6 @@ The current version is 26.0825.02. Versions use `YY.MMDD.NN`: two-digit year, mo
 
 The application starts silently by default and stays out of the Dock. A full-width control row remains visible above the focused window, with the three controls on its right. Repeated launches reuse the existing process, and the menu bar icon opens the settings window.
 
-The local test package is `dist/MacWindowButtons-26.0825.02.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
+The local test package is `dist/MacWindowButtons-26.0830.01.dmg`. It is ad-hoc signed and not notarized. Automatic installation also requires the Release notes to contain the DMG's 64-character SHA-256 and a writable application directory. The project does not disable SIP, modify system files, or inject code into other processes.
 
 The offline issuer is `licenseGet/generate_license.py`. It stores the Ed25519 signing key as a password-encrypted PKCS#8 `license_private_key.pem`; migrate the legacy plaintext JSON with `--migrate-key` so the embedded public key and existing licenses remain valid. Keep the encrypted key and password in separate offline backups, and never ship either private-key file in the application or DMG.

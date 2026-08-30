@@ -163,6 +163,7 @@ final class AppSettings {
         static let chineseEnglishShortcutKeyCode = "chineseEnglishShortcutKeyCode"
         static let chineseEnglishShortcutModifiers = "chineseEnglishShortcutModifiers"
         static let finderContextMenuEnabled = "finderContextMenuEnabled"
+        static let copyPathMenuItemEnabled = "copyPathMenuItemEnabled"
         static let desktopShortcutMenuItemEnabled = "desktopShortcutMenuItemEnabled"
         static let desktopShortcutNameStyle = "desktopShortcutNameStyle"
     }
@@ -185,6 +186,7 @@ final class AppSettings {
     private(set) var isChineseEnglishShortcutEnabled: Bool
     private(set) var chineseEnglishShortcut: GlobalKeyboardShortcut?
     private(set) var isFinderContextMenuEnabled: Bool
+    private(set) var isCopyPathMenuItemEnabled: Bool
     private(set) var isDesktopShortcutMenuItemEnabled: Bool
     private(set) var desktopShortcutNameStyle: DesktopShortcutNameStyle
 
@@ -254,6 +256,9 @@ final class AppSettings {
         }
         isFinderContextMenuEnabled = defaults.object(
             forKey: Key.finderContextMenuEnabled
+        ) as? Bool ?? true
+        isCopyPathMenuItemEnabled = defaults.object(
+            forKey: Key.copyPathMenuItemEnabled
         ) as? Bool ?? true
         isDesktopShortcutMenuItemEnabled = defaults.object(
             forKey: Key.desktopShortcutMenuItemEnabled
@@ -400,6 +405,11 @@ final class AppSettings {
     func setDesktopShortcutMenuItemEnabled(_ enabled: Bool) {
         isDesktopShortcutMenuItemEnabled = enabled
         defaults.set(enabled, forKey: Key.desktopShortcutMenuItemEnabled)
+    }
+
+    func setCopyPathMenuItemEnabled(_ enabled: Bool) {
+        isCopyPathMenuItemEnabled = enabled
+        defaults.set(enabled, forKey: Key.copyPathMenuItemEnabled)
     }
 
     func setDesktopShortcutNameStyle(_ style: DesktopShortcutNameStyle) {
